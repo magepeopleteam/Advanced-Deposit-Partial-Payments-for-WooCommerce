@@ -1,0 +1,93 @@
+.mep_event_add_cart_table div.mep-pp-payment-btn-wraper {
+    text-align: center;
+    margin: 15px 0;
+    display: none;
+}
+
+.mep-pp-payment-btn-wraper ul li {
+    display: inline-block;
+    margin: 10px 10px;
+    background: transparent;
+}
+input.mep-pp-user-amountinput {
+    display: inline-block!important;
+    width: 50px!important;
+    padding: 5px!important;
+    font-size: 16px!important;
+    border: 1px solid!important;
+}
+
+.mep-pp-payment-btn-wraper span.woocommerce-Price-amount.amount, .mep-pp-payment-btn-wraper input {
+    margin: 0 5px!important;
+}
+.mep-pp-history-table tr th,
+.mep-pp-history-table tr td {
+    text-align: left;
+}
+.mep-pp-history-table {
+    margin-bottom: 20px;
+}
+.mep-pp-history-table .mep_current_last_due {
+    color: #cc1818;
+}
+td > input[name="manually_pay_amount"] {
+    width: 50%;
+    border-radius: 5px;
+}
+.mep_event_add_cart_table div.mep-product-payment-plans {
+    background-color: #FBFBFB;
+    text-align: left;
+    padding: 5px 0!important;
+}
+.mep-product-payment-plans strong{font-weight: bold !important;}
+.mep-product-payment-plans label {
+    display: inline-block!important;
+    font-size: 17px;
+    font-weight: 500;
+}
+.mep-single-plan.plan-details {
+    padding-left: 23px;
+    display: none;
+}
+ul.mep-pp-payment-terms label{margin: 0;}
+.mep-single-plan.plan-details p{margin: 7px 0 0 0;}
+.mep-single-plan.plan-details table{width:100%;margin: 10px 0;}
+.mep-single-plan.plan-details table thead {
+    background-color: #f6f3f3;
+}
+.mep-single-plan.plan-details table th {
+    padding:5px;
+    font-size:14px;
+}
+.mep-single-plan.plan-details table td {
+    font-size: 13px!important;
+    padding:5px;
+}
+.mep-pp-show-detail {
+    color: #7bc1c1;
+    font-size: .8em;
+    margin-left: 5px;
+    font-weight: 400;
+    cursor: pointer;
+}
+.mep-single-plan-wrap {
+    margin-bottom: 10px;
+}
+.mep-pp-payment-btn-wraper .mep-pp-payment-terms {
+    background: #ddd;
+    margin: 10px 0;
+}
+.mep_due_pay_btn {
+    display: block;
+    text-align: center;
+    background: #f9ee15;
+    border-radius: 5px;
+    margin-top: 5px;
+    text-decoration: none!important;
+}
+.mep_style_ta_r {
+    text-align: right!important;
+}
+.mep_style_tt_upper {
+    text-transform: uppercase;
+}

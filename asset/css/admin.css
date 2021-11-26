@@ -1,0 +1,12 @@
+div#mep_event_pp_meta_boxes table.form-table {
+    width: 100%;
+}
+
+div#mep_event_pp_meta_boxes td, div#mep_event_pp_meta_boxes th, div#mep_event_pp_meta_boxes td input, div#mep_event_pp_meta_boxes td select {
+    display: block;
+    max-width: 100%;
+    width: auto;
+}
+input#_mep_enable_pp_deposit {
+    display: inline-block!important;
+}
