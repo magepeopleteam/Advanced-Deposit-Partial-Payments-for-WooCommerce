@@ -23,11 +23,15 @@ class MEP_PP_Cart
     public function add_cart_item_pp_deposit_data($cart_item_data, $product_id)
     {
         if (function_exists('mep_product_exists')) {
-            $linked_event_id = get_post_meta($product_id, 'link_mep_event', true) ? get_post_meta($product_id, 'link_mep_event', true) : $product_id;
-            $product_id = mep_product_exists($linked_event_id) ? $linked_event_id : $product_id;
-            if(mep_product_exists($linked_event_id)) {
+            if (get_post_meta($product_id, 'link_mep_event', true)) {
+                $linked_event_id = get_post_meta($product_id, 'link_mep_event', true);
+            } else {
+                $linked_event_id = null;
+            }
+
+            if($linked_event_id) {
                 if(!wcppe_enable_for_event()) return $cart_item_data;
-                $product_id = $linked_event_id;
+                $product_id = mep_product_exists($linked_event_id) ? $linked_event_id : $product_id;
             }
         }
 

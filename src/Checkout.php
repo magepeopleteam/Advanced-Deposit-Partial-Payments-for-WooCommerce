@@ -27,6 +27,9 @@ class MEP_PP_Checkout
         }
         // Zero price Checkout END
 
+        add_filter('wc_order_statuses', array($this, 'order_statuses'));
+        add_filter('woocommerce_order_has_status', array($this, 'order_has_status'), 10, 3);
+
         add_action('woocommerce_order_details_after_order_table', [$this, 'pending_payment_button'], 10, 1);
         add_action('woocommerce_order_status_completed', [$this, 'deposit_order_complete'], 10, 1);
         add_action('woocommerce_order_status_processing', [$this, 'deposit_order_processing'], 10, 1);
@@ -41,7 +44,6 @@ class MEP_PP_Checkout
 
     public function filter_payment_method($payment_methods)
     {
-//        echo '<pre>';print_r($payment_methods);die;
         unset( $payment_methods['paypal'] );
 
         return $payment_methods;
@@ -50,7 +52,6 @@ class MEP_PP_Checkout
     public function before_pay_action($order)
     {
         $manually_pay_amount = isset($_POST['manually_pay_amount']) ? sanitize_text_field($_POST['manually_pay_amount']) : 0;
-
         // Parent Order
         $parent_order_id = $order->get_parent_id();
         $parent_order = wc_get_order($parent_order_id);
@@ -248,7 +249,7 @@ class MEP_PP_Checkout
                 $is_deposit_mode = true;
             }
         }
-        var_dump($is_deposit_mode);
+
         if (!$is_deposit_mode) {
             return;
         }
@@ -278,7 +279,7 @@ class MEP_PP_Checkout
 
         // ********************************
         if ($due_amount) {
-            $order->set_status('wc-pending');
+            $order->set_status('wc-partially-paid');
             // $order->update_meta_data('paying_pp_due_payment', 1, true);
 
             $order->update_meta_data('_wc_pp_deposit_paid', 'yes');
@@ -497,7 +498,6 @@ class MEP_PP_Checkout
     public function due_payment_order_data($order_id)
     {
         // Get an instance of the WC_Order object (same as before)
-
         $order = wc_get_order($order_id);
         $due_amount = get_post_meta($order_id, 'due_payment', true);
 
@@ -518,7 +518,7 @@ class MEP_PP_Checkout
         $parent_order = wc_get_order($parent_id);
 
         if ($get_due_amount) {
-            $parent_order->set_status('wc-pending');
+            $parent_order->set_status('wc-partially-paid');
 
         } elseif($get_due_amount === 'no_data') {
             return null;
@@ -554,7 +554,7 @@ class MEP_PP_Checkout
 
             $pp_history = new WP_Query($args);
 
-            if ($pp_history) {
+            if ($pp_history->found_posts > 0) {
                 $history_id = $pp_history->posts[0]->ID;
                 update_post_meta($history_id, 'payment_method', $payment_method);
                 update_post_meta($history_id, 'payment_date', date('Y-m-d'));
@@ -584,7 +584,7 @@ class MEP_PP_Checkout
                 $order = wc_get_order($id);
                 $status = get_post_status($id);
                 $confirm_email_sent = get_post_meta($id, 'order_confirm_email_sent', true);
-                if($status == 'wc-pending' && $confirm_email_sent !== 'yes') {
+                if($status == 'wc-partially-paid' && $confirm_email_sent !== 'yes') {
                     $return_id = $id;
                     $_date_paid = get_post_meta($id, '_date_paid', true);
                     $_date_completed = get_post_meta($id, '_date_completed', true);
@@ -681,7 +681,7 @@ class MEP_PP_Checkout
             }
         }
 
-        WC()->cart->set_session(); // Finaly Update Cart
+        WC()->cart->set_session(); // Finally Update Cart
 
         $data = array(
             'with_symbol' => wc_price($due),
@@ -694,7 +694,7 @@ class MEP_PP_Checkout
     public function checkout_payment_url($url, $order)
     {
         if (get_post_meta($order->get_id(), 'due_payment', true) == '0' || get_post_meta($order->get_id(), 'paying_pp_due_payment', true) == '1') {
-            return;
+            return null;
         }
 
         if ($order->get_type() !== 'wcpp_payment') {
@@ -755,7 +755,7 @@ class MEP_PP_Checkout
         $due = get_post_meta($order_id, 'due_payment', true);
         if ($due) {
             if ('processing' == $order_status) {
-                return 'pending';
+                return 'partially-paid';
             }
         }
 
@@ -772,6 +772,35 @@ class MEP_PP_Checkout
 
     function check_order_payment($th, $order, $valid_order_statuses) {
         return $order->has_status( $valid_order_statuses );
+    }
+
+    public function order_statuses($order_statuses)
+    {
+        $new_statuses = array();
+        // Place the new status after 'Pending payment'
+        foreach ($order_statuses as $key => $value) {
+            $new_statuses[$key] = $value;
+            if ($key === 'wc-pending') {
+                $new_statuses['wc-partially-paid'] = esc_html__('Partially Paid', 'woocommerce-deposits');
+            }
+        }
+        return $new_statuses;
+    }
+
+    public function order_has_status($has_status, $order, $status)
+    {
+        if ($order->get_status() === 'partially-paid') {
+            if (is_array($status)) {
+                if (in_array('pending', $status)) {
+                    $has_status = true;
+                }
+            } else {
+                if ($status === 'pending') {
+                    $has_status = true;
+                }
+            }
+        }
+        return $has_status;
     }
 }
 

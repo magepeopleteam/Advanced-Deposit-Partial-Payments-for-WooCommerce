@@ -509,7 +509,8 @@ if (!function_exists('mep_pp_history_add')) {
 
         $order = wc_get_order($order_id);
         $order_status = $order->get_status();
-        if ($order_status == 'pending') {
+
+        if ($order_status == 'partially-paid' || $order_status == 'pending') {
             $postdata = array(
                 'post_type' => 'mep_pp_history',
                 'post_status' => 'publish',

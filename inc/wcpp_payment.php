@@ -54,7 +54,7 @@ function mep_pp_register_payment_post_type()
 if (!function_exists('mep_pp_register_order_status')) {
 function mep_pp_register_order_status()
 {
-    register_post_status('wcpp-partially-paid', array(
+    register_post_status('wc-partially-paid', array(
         'label'                     => _x('Partially Paid', 'Order status', 'advanced-partial-payment-or-deposit-for-woocommerce'),
         'public'                    => true,
         'exclude_from_search'       => false,

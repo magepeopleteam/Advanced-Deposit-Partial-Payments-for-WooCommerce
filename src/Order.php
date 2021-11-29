@@ -13,8 +13,7 @@ class MEP_PP_Order
         add_filter("woocommerce_cancel_unpaid_order", [$this, 'prevent_auto_order_cancel'], 10, 2);
         add_filter("woocommerce_can_restore_order_stock", [$this, 'prevent_order_restock'], 10, 2);
 
-        add_filter('wc_order_statuses', array($this, 'order_statuses'));
-        add_filter('woocommerce_order_has_status', array($this, 'order_has_status'), 10, 3);
+        // add_filter('wc_order_statuses', array($this, 'order_statuses'));
     }
 
     /**
@@ -165,34 +164,34 @@ class MEP_PP_Order
         return $quantity;
     }
 
-    public function order_statuses($order_statuses)
-    {
-        $new_statuses = array();
-        // Place the new status after 'Pending payment'
-        foreach ($order_statuses as $key => $value) {
-            $new_statuses[$key] = $value;
-            if ($key === 'wc-pending') {
-                $new_statuses['wcpp-partially-paid'] = mepp_get_option('mepp_text_translation_string_partially_paid', __('Partially Paid', 'advanced-partial-payment-or-deposit-for-woocommerce'));
-            }
-        }
-        return $new_statuses;
-    }
+    // public function order_statuses($order_statuses)
+    // {
+    //     $new_statuses = array();
+    //     // Place the new status after 'Pending payment'
+    //     foreach ($order_statuses as $key => $value) {
+    //         $new_statuses[$key] = $value;
+    //         if ($key === 'wc-pending') {
+    //             $new_statuses['wcpp-partially-paid'] = mepp_get_option('mepp_text_translation_string_partially_paid', __('Partially Paid', 'advanced-partial-payment-or-deposit-for-woocommerce'));
+    //         }
+    //     }
+    //     return $new_statuses;
+    // }
 
-    public function order_has_status($has_status, $order, $status)
-    {
-        if ($order->get_status() === 'partially-paid') {
-            if (is_array($status)) {
-                if (in_array('pending', $status)) {
-                    $has_status = true;
-                }
-            } else {
-                if ($status === 'pending') {
-                    $has_status = true;
-                }
-            }
-        }
-        return $has_status;
-    }
+    // public function order_has_status($has_status, $order, $status)
+    // {
+    //     if ($order->get_status() === 'partially-paid') {
+    //         if (is_array($status)) {
+    //             if (in_array('pending', $status)) {
+    //                 $has_status = true;
+    //             }
+    //         } else {
+    //             if ($status === 'pending') {
+    //                 $has_status = true;
+    //             }
+    //         }
+    //     }
+    //     return $has_status;
+    // }
 }
 
 new MEP_PP_Order();
