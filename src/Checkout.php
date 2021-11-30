@@ -47,9 +47,11 @@ class MEP_PP_Checkout
         if(is_cart() || is_checkout()) {
             $has_deposit_in_cart = false;
             foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) {
-                if($cart_item['_pp_deposit_type'] == 'check_pp_deposit') {
-                    $has_deposit_in_cart = true;
-                    break;
+                if(isset($cart_item['_pp_deposit_type'])) {
+                    if($cart_item['_pp_deposit_type'] == 'check_pp_deposit') {
+                        $has_deposit_in_cart = true;
+                        break;
+                    }
                 }
             }
 
@@ -253,17 +255,19 @@ class MEP_PP_Checkout
             $deposit_value += (isset($cart_item['_pp_deposit_type']) && $cart_item['_pp_deposit_type'] == 'check_pp_deposit') ? $cart_item['_pp_deposit'] * $cart_item['quantity'] : 0;
             $due_payment_value += (isset($cart_item['_pp_deposit_type']) && $cart_item['_pp_deposit_type'] == 'check_pp_deposit') ? $cart_item['_pp_due_payment'] * $cart_item['quantity'] : 0;
 
-            if ($cart_item['_pp_deposit_system'] == 'payment_plan') {
-                $cart_has_payment_plan = true;
-                $order_payment_plan = isset($cart_item['_pp_order_payment_terms']) ? $cart_item['_pp_order_payment_terms'] : array();
-            }
-
-            if($pp_deposit_system == '') {
-                $pp_deposit_system = $cart_item['_pp_deposit_system'];
-            }
-
-            if (isset($cart_item['_pp_deposit_system'])) {
-                $is_deposit_mode = true;
+            if(isset($cart_item['_pp_deposit_system'])) {
+                if ($cart_item['_pp_deposit_system'] == 'payment_plan') {
+                    $cart_has_payment_plan = true;
+                    $order_payment_plan = isset($cart_item['_pp_order_payment_terms']) ? $cart_item['_pp_order_payment_terms'] : array();
+                }
+    
+                if($pp_deposit_system == '') {
+                    $pp_deposit_system = $cart_item['_pp_deposit_system'];
+                }
+    
+                if (isset($cart_item['_pp_deposit_system'])) {
+                    $is_deposit_mode = true;
+                }
             }
         }
 
