@@ -64,19 +64,6 @@ class WC_Settings_Tab_Mage_Partial_Basic
                 'desc' => '',
                 'id' => 'wc_settings_tab_mage_partial_section_title',
             ),
-
-            // 'mepp_item_reduce_on_partial_payment' => array(
-            //     'name' => __( 'Quantity reduce on partialy paid', 'woocommerce-settings-tab-demo' ),
-            //     'type' => 'select',
-            //     'options' => array(
-            //         'no' => __('No', 'woocommerce-settings-tab-demo'),
-            //         'yes' => __('Yes', 'woocommerce-settings-tab-demo'),
-            //     ),
-            //     'default' => 'no',
-            //     'desc' => __( '', 'woocommerce-settings-tab-demo' ),
-            //     'id'   => 'mepp_text_translation_string_pay_deposit'
-            // ),
-
             'mepp_label_pay_deposit' => array(
                 'name' => __('Label for text: Pay Deposit', 'woocommerce-settings-tab-demo'),
                 'type' => 'text',
@@ -154,7 +141,17 @@ class WC_Settings_Tab_Mage_Partial_Basic
                 'desc' => __('', 'woocommerce-settings-tab-demo'),
                 'id' => 'mepp_text_translation_string_pay_due_payment',
             ),
-
+            'mepp_allow_regular_and_deposit_product_in_cart' => array(
+                'name' => __( 'Allow Regular product and Partial product in Cart', 'woocommerce-settings-tab-demo' ),
+                'type' => 'select',
+                'options' => array(
+                    'no' => __('No', 'woocommerce-settings-tab-demo'),
+                    'yes' => __('Yes', 'woocommerce-settings-tab-demo'),
+                ),
+                'default' => 'yes',
+                'desc' => __( 'Allow Regular product and Partial product in Cart?', 'woocommerce-settings-tab-demo' ),
+                'id'   => 'meppp_allow_regular_and_deposit_product_in_cart'
+            ),
             'section_end' => array(
                 'type' => 'sectionend',
                 'id' => 'wc_settings_tab_mage_partial_section_end',

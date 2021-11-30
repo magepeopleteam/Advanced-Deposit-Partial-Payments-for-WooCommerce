@@ -436,7 +436,8 @@ if (!function_exists('mep_pp_validate_frontend_input')) {
             $product_id = mep_product_exists($linked_event_id) ? $linked_event_id : $product_id;
         }
 
-        if (!is_plugin_active('mage-partial-payment-pro/mage_partial_pro.php')) {
+        $is_allow_regular_partial_product_in_cart = mepp_get_option('meppp_allow_regular_and_deposit_product_in_cart', 'yes');
+        if ($is_allow_regular_partial_product_in_cart === 'no') {
             $passed = apply_filters('woocommerce_add_to_cart_validation_additional', $passed, $product_id);
         }
 

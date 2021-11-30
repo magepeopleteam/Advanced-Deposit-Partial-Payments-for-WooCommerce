@@ -44,7 +44,24 @@ class MEP_PP_Checkout
 
     public function filter_payment_method($payment_methods)
     {
-        unset( $payment_methods['paypal'] );
+        if(is_cart() || is_checkout()) {
+            $has_deposit_in_cart = false;
+            foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) {
+                if($cart_item['_pp_deposit_type'] == 'check_pp_deposit') {
+                    $has_deposit_in_cart = true;
+                    break;
+                }
+            }
+
+            $allowed_payment_methods = mepp_get_option('meppp_payment_methods_allow');
+            if($has_deposit_in_cart && $allowed_payment_methods) {
+                foreach($payment_methods as $method) {
+                    if(!in_array($method->id, $allowed_payment_methods)) {
+                        unset( $payment_methods[$method->id] );
+                    }
+                }
+            }
+        }
 
         return $payment_methods;
     }
@@ -405,6 +422,12 @@ class MEP_PP_Checkout
             //update the schedule meta of parent order
             $order->update_meta_data('_wc_pp_payment_schedule', $payment_schedule);
             $order->save();
+        }
+
+        // Stock Reduce on by setting
+        $stock_reduce_on = mepp_get_option('meppp_quantity_reduce_on', 'full');
+        if($stock_reduce_on === 'full') {
+            add_filter( 'woocommerce_payment_complete_reduce_order_stock', '__return_false' );
         }
 
         $data = array(
