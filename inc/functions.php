@@ -961,7 +961,7 @@ function mep_conditional_pay_button_my_orders_actions($actions, $order)
 // Check if partial payment enable addon for event is activate
 function wcppe_enable_for_event()
 {
-    return is_plugin_active('woocommerce-event-manager-addon-advanced-partial-payment-for-event/plugin.php');
+    return is_plugin_active('mage-partial-payment-pro/mage_partial_pro.php');
 }
 
 // Escape Html
