@@ -35,6 +35,19 @@ class MEP_PP_Cart
             }
         }
 
+        // Check user and role
+        if(is_user_logged_in()) {
+            $user = wp_get_current_user();
+            $roles = ( array ) $user->roles;
+            $pp_allow_roles = mepp_get_option('meppp_user_roles_allow');
+            if($pp_allow_roles) {
+                if(!array_intersect($pp_allow_roles, $roles)) {
+                    return $cart_item_data;
+                }
+            }
+        }
+
+        // Check Product allow deposit and payment type
         if (meppp_is_product_type_pp_deposit($product_id) == false || $_POST['deposit-mode'] == 'check_full') {
             return $cart_item_data;
         }
@@ -66,7 +79,7 @@ class MEP_PP_Cart
             $cart_item_data['_pp_deposit_type'] = sanitize_text_field($_POST['deposit-mode']);
             $cart_item_data['_pp_deposit_system'] = 'zero_price_checkout';
             $cart_item_data['_pp_deposit_payment_plan_name'] = '';
-            
+
             return $cart_item_data;
         }
 
