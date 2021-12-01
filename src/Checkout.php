@@ -44,7 +44,7 @@ class MEP_PP_Checkout
 
     public function filter_payment_method($payment_methods)
     {
-        if(is_cart() || is_checkout()) {
+        if(is_checkout()) {
             $has_deposit_in_cart = false;
             foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) {
                 if(isset($cart_item['_pp_deposit_type'])) {
@@ -56,10 +56,31 @@ class MEP_PP_Checkout
             }
 
             $allowed_payment_methods = mepp_get_option('meppp_payment_methods_allow');
-            if($has_deposit_in_cart && $allowed_payment_methods) {
+            if($has_deposit_in_cart && $allowed_payment_methods) { // check by cart data
                 foreach($payment_methods as $method) {
                     if(!in_array($method->id, $allowed_payment_methods)) {
                         unset( $payment_methods[$method->id] );
+                    }
+                }
+            }
+
+            if(!$has_deposit_in_cart && $allowed_payment_methods) { // check by order id
+                global $wp;
+
+                if ( isset($wp->query_vars['order-pay']) && absint($wp->query_vars['order-pay']) > 0 ) {
+                    $order_id = absint($wp->query_vars['order-pay']); // The order ID
+                    $order    = wc_get_order( $order_id ); // Get the WC_Order Object instance
+                    $parent_order_id = $order->get_parent_id();
+                    if($parent_order_id) {
+                        $p_order = wc_get_order($parent_order_id);
+                        $is_deposit_order = $p_order->get_meta('_pp_deposit_system');
+                        if($is_deposit_order) {
+                            foreach($payment_methods as $method) {
+                                if(!in_array($method->id, $allowed_payment_methods)) {
+                                    unset( $payment_methods[$method->id] );
+                                }
+                            }
+                        }
                     }
                 }
             }
