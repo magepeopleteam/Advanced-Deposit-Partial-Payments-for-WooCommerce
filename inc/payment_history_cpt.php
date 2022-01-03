@@ -14,16 +14,16 @@ class Mep_Payment_History_Cpt{
 		);
 	
 	    $args = array(
-	        'public'                => true,
+	        'public'                => false,
 	        'labels'                => $labels,
 	        'menu_icon'             => 'dashicons-slides',
 	        'supports'              => array('title'),
 			'rewrite'               => array('slug' => 'mep_pp_history'),
-			'show_ui'          		=> true,
-			'show_in_menu'          => 'edit.php?post_type=mep_events',
+			'show_ui'          		=> false,
+			// 'show_in_menu'          => 'edit.php?post_type=mep_events',
 	    );
 
-	   	// register_post_type( 'mep_pp_history', $args );
+	   	register_post_type( 'mep_pp_history', $args );
 
 	}
 

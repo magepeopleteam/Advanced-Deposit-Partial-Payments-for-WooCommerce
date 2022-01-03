@@ -1,5 +1,7 @@
 <?php
-if (!defined('ABSPATH')) {die;}
+if (!defined('ABSPATH')) {
+    die;
+}
 
 class MEP_PP_Checkout
 {
@@ -15,15 +17,15 @@ class MEP_PP_Checkout
         add_action('woocommerce_thankyou', [$this, 'send_notification'], 20, 1);
         add_action('woocommerce_email', [$this, 'unhook_new_order_email']);
         /***  Disable suborder email to customer ****/
-        add_filter( 'woocommerce_email_recipient_customer_completed_order', [$this, 'disable_email_for_sub_order'], 10, 2 );
+        add_filter('woocommerce_email_recipient_customer_completed_order', [$this, 'disable_email_for_sub_order'], 10, 2);
 
         // Zero price Checkout
         $this->zero_price_checkout_allow = get_option('meppp_checkout_zero_price') ? get_option('meppp_checkout_zero_price') : 'no';
-        if($this->zero_price_checkout_allow === 'yes') {
+        if ($this->zero_price_checkout_allow === 'yes') {
             add_filter('woocommerce_cart_needs_payment', '__return_false');
             add_filter('woocommerce_order_needs_payment', '__return_false');
             remove_filter('woocommerce_order_needs_payment', 'WC_Order');
-            add_filter( 'woocommerce_order_needs_payment', array($this, 'check_order_payment'), 10, 3 );
+            add_filter('woocommerce_order_needs_payment', array($this, 'check_order_payment'), 10, 3);
         }
         // Zero price Checkout END
 
@@ -32,23 +34,24 @@ class MEP_PP_Checkout
 
         add_action('woocommerce_order_details_after_order_table', [$this, 'pending_payment_button'], 10, 1);
         add_action('woocommerce_order_status_completed', [$this, 'deposit_order_complete'], 10, 1);
+        add_action('woocommerce_order_status_partially-paid', [$this, 'deposit_order_partially_paid'], 10, 1);
         add_action('woocommerce_order_status_processing', [$this, 'deposit_order_processing'], 10, 1);
         add_action('woocommerce_order_status_cancelled', [$this, 'deposit_order_cancelled'], 10, 1);
         add_filter('woocommerce_checkout_cart_item_quantity', [$this, 'display_item_pp_deposit_data'], 20, 3);
         add_filter('woocommerce_checkout_create_order_line_item', [$this, 'save_cart_item_custom_meta_as_order_item_meta'], 20, 4);
         add_filter('woocommerce_payment_complete_order_status', array($this, 'prevent_status_to_processing'), 10, 2);
         add_action('wp_ajax_manually_pay_amount_input', array($this, 'manually_pay_amount_input'));
-        add_filter( 'woocommerce_available_payment_gateways', array($this, 'filter_payment_method') );
+        add_filter('woocommerce_available_payment_gateways', array($this, 'filter_payment_method'));
         do_action('dfwc_checkout', $this);
     }
 
     public function filter_payment_method($payment_methods)
     {
-        if(is_checkout()) {
+        if (is_checkout()) {
             $has_deposit_in_cart = false;
             foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) {
-                if(isset($cart_item['_pp_deposit_type'])) {
-                    if($cart_item['_pp_deposit_type'] == 'check_pp_deposit') {
+                if (isset($cart_item['_pp_deposit_type'])) {
+                    if ($cart_item['_pp_deposit_type'] == 'check_pp_deposit') {
                         $has_deposit_in_cart = true;
                         break;
                     }
@@ -56,28 +59,28 @@ class MEP_PP_Checkout
             }
 
             $allowed_payment_methods = mepp_get_option('meppp_payment_methods_allow');
-            if($has_deposit_in_cart && $allowed_payment_methods) { // check by cart data
-                foreach($payment_methods as $method) {
-                    if(!in_array($method->id, $allowed_payment_methods)) {
-                        unset( $payment_methods[$method->id] );
+            if ($has_deposit_in_cart && $allowed_payment_methods) { // check by cart data
+                foreach ($payment_methods as $method) {
+                    if (!in_array($method->id, $allowed_payment_methods)) {
+                        unset($payment_methods[$method->id]);
                     }
                 }
             }
 
-            if(!$has_deposit_in_cart && $allowed_payment_methods) { // check by order id
+            if (!$has_deposit_in_cart && $allowed_payment_methods) { // check by order id
                 global $wp;
 
-                if ( isset($wp->query_vars['order-pay']) && absint($wp->query_vars['order-pay']) > 0 ) {
+                if (isset($wp->query_vars['order-pay']) && absint($wp->query_vars['order-pay']) > 0) {
                     $order_id = absint($wp->query_vars['order-pay']); // The order ID
-                    $order    = wc_get_order( $order_id ); // Get the WC_Order Object instance
+                    $order = wc_get_order($order_id); // Get the WC_Order Object instance
                     $parent_order_id = $order->get_parent_id();
-                    if($parent_order_id) {
+                    if ($parent_order_id) {
                         $p_order = wc_get_order($parent_order_id);
                         $is_deposit_order = $p_order->get_meta('_pp_deposit_system');
-                        if($is_deposit_order) {
-                            foreach($payment_methods as $method) {
-                                if(!in_array($method->id, $allowed_payment_methods)) {
-                                    unset( $payment_methods[$method->id] );
+                        if ($is_deposit_order) {
+                            foreach ($payment_methods as $method) {
+                                if (!in_array($method->id, $allowed_payment_methods)) {
+                                    unset($payment_methods[$method->id]);
                                 }
                             }
                         }
@@ -103,7 +106,7 @@ class MEP_PP_Checkout
 
         $manually_due_amount = isset($_POST['manually_due_amount']) ? sanitize_text_field($_POST['manually_due_amount']) : $current_due_amount;
 
-        if($manually_pay_amount == 0) {
+        if ($manually_pay_amount == 0) {
             $payTo = $current_due_amount;
             $manually_due_amount = 0;
         } else {
@@ -112,7 +115,6 @@ class MEP_PP_Checkout
 
         $order_id = $order->get_id();
         $order->set_total($payTo);
-
 
         update_post_meta($parent_order_id, 'deposit_value', $prev_deposited + $payTo);
         update_post_meta($parent_order_id, 'due_payment', $manually_due_amount);
@@ -133,7 +135,6 @@ class MEP_PP_Checkout
 
         $due_amount = get_post_meta($parent_order_id, 'due_payment', true);
 
-        // ********************************
         if ($due_amount && !$order_payment_plan) {
 
             // New
@@ -188,6 +189,7 @@ class MEP_PP_Checkout
                     $partial_payment->set_customer_user_agent($user_agent);
 
                     $partial_payment->set_total($amount);
+                    $partial_payment->add_meta_data('_wc_pp_reminder_email_sent', 'no');
                     $partial_payment->save();
 
                     $payment_schedule[$partial_key]['id'] = $partial_payment->get_id();
@@ -197,8 +199,26 @@ class MEP_PP_Checkout
 
             //update the schedule meta of parent order
             $parent_order->update_meta_data('_wc_pp_payment_schedule', $payment_schedule);
-            $parent_order->save();
+            $parent_order->update_meta_data('_wc_pp_last_payment_date', strtotime(date('Y-m-d', current_time('timestamp'))));
+
+            // Generate Next Payment Reminder Date
+            $next_payment_reminder_day_num = get_option('mepp_day_before_second_payment_reminder'); // Days number from setting
+            $next_payment_reminder_date = strtotime("+" . intval($next_payment_reminder_day_num) . " days");
+            $parent_order->update_meta_data('_wc_pp_next_payment_reminder_date', $next_payment_reminder_date);
+
         }
+
+        // Generate Next Payment Reminder Date
+        if ($order_payment_plan) {
+            // For Payment plan
+            $next_payment_reminder_day_num = get_option('mepp_day_before_payment_plan_reminder'); // Days number from setting
+            $next_payment_order_id = mep_get_next_payment_order_id($parent_order->get_id());
+            $next_payment_date = get_post_meta($next_payment_order_id, '_wc_pp_partial_payment_date', true);
+            $next_payment_reminder_date = strtotime("-" . intval($next_payment_reminder_day_num) . " days", $next_payment_date);
+            $parent_order->update_meta_data('_wc_pp_next_payment_reminder_date', $next_payment_reminder_date);
+        }
+
+        $parent_order->save();
 
         return $order;
     }
@@ -276,16 +296,16 @@ class MEP_PP_Checkout
             $deposit_value += (isset($cart_item['_pp_deposit_type']) && $cart_item['_pp_deposit_type'] == 'check_pp_deposit') ? $cart_item['_pp_deposit'] * $cart_item['quantity'] : 0;
             $due_payment_value += (isset($cart_item['_pp_deposit_type']) && $cart_item['_pp_deposit_type'] == 'check_pp_deposit') ? $cart_item['_pp_due_payment'] * $cart_item['quantity'] : 0;
 
-            if(isset($cart_item['_pp_deposit_system'])) {
+            if (isset($cart_item['_pp_deposit_system'])) {
                 if ($cart_item['_pp_deposit_system'] == 'payment_plan') {
                     $cart_has_payment_plan = true;
                     $order_payment_plan = isset($cart_item['_pp_order_payment_terms']) ? $cart_item['_pp_order_payment_terms'] : array();
                 }
-    
-                if($pp_deposit_system == '') {
+
+                if ($pp_deposit_system == '') {
                     $pp_deposit_system = $cart_item['_pp_deposit_system'];
                 }
-    
+
                 if (isset($cart_item['_pp_deposit_system'])) {
                     $is_deposit_mode = true;
                 }
@@ -310,7 +330,7 @@ class MEP_PP_Checkout
 
         $order->update_meta_data('deposit_mode', 'yes', true);
         $order->update_meta_data('_pp_deposit_system', $pp_deposit_system, true);
-        if($pp_deposit_system == 'zero_price_checkout') {
+        if ($pp_deposit_system == 'zero_price_checkout') {
             $order->update_meta_data('zero_price_checkout_allow', 'no', true);
         }
 
@@ -322,12 +342,11 @@ class MEP_PP_Checkout
         // ********************************
         if ($due_amount) {
             $order->set_status('wc-partially-paid');
-            // $order->update_meta_data('paying_pp_due_payment', 1, true);
+//            $order->update_meta_data('paying_pp_due_payment', 1, true);
 
             $order->update_meta_data('_wc_pp_deposit_paid', 'yes');
             $order->update_meta_data('_wc_pp_second_payment_paid', 'no');
             $order->update_meta_data('_wc_pp_deposit_payment_time', time());
-            $order->update_meta_data('_wc_pp_second_payment_reminder_email_sent', 'no');
             $order->save();
 
             $payment_method = get_post_meta($order->get_order_number(), '_payment_method', true);
@@ -436,7 +455,7 @@ class MEP_PP_Checkout
                             );
                             mep_pp_history_add($partial_payment->get_id(), $data, $order->get_id());
                         }
-                        $partial_payment->add_meta_data('_wc_pp_payment_plan_reminder_email_sent', 'no');
+                        $partial_payment->add_meta_data('_wc_pp_reminder_email_sent', 'no');
                     }
 
                     $partial_payment->save();
@@ -446,25 +465,40 @@ class MEP_PP_Checkout
 
             //update the schedule meta of parent order
             $order->update_meta_data('_wc_pp_payment_schedule', $payment_schedule);
+            $order->update_meta_data('_wc_pp_last_payment_date', strtotime(date('Y-m-d', current_time('timestamp'))));
+            if ($cart_has_payment_plan) {
+                // For Payment plan
+                $next_payment_reminder_day_num = get_option('mepp_day_before_payment_plan_reminder'); // Days number from setting
+                $next_payment_order_id = mep_get_next_payment_order_id($order->get_id());
+                $next_payment_date = get_post_meta($next_payment_order_id, '_wc_pp_partial_payment_date', true);
+                $next_payment_reminder_date = strtotime("-" . intval($next_payment_reminder_day_num) . " days", $next_payment_date);
+                $order->update_meta_data('_wc_pp_next_payment_reminder_date', $next_payment_reminder_date);
+            } else {
+                $next_payment_reminder_day_num = get_option('mepp_day_before_second_payment_reminder'); // Days number from setting
+                $next_payment_reminder_date = strtotime("+" . intval($next_payment_reminder_day_num) . " days");
+                $order->update_meta_data('_wc_pp_next_payment_reminder_date', $next_payment_reminder_date);
+            }
             $order->save();
+
+            $data = array(
+                'deposite_amount' => $deposit_amount,
+                'due_amount' => $due_amount,
+                'payment_date' => date('Y-m-d'),
+                'payment_method' => $payment_method,
+            );
+
+            if (!$cart_has_payment_plan) { // Not payment plan
+                mep_pp_history_add($order->get_id(), $data, $order->get_id());
+            }
         }
 
         // Stock Reduce on by setting
         $stock_reduce_on = mepp_get_option('meppp_quantity_reduce_on', 'full');
-        if($stock_reduce_on === 'full') {
-            add_filter( 'woocommerce_payment_complete_reduce_order_stock', '__return_false' );
+        if ($stock_reduce_on === 'full') {
+            add_filter('woocommerce_payment_complete_reduce_order_stock', '__return_false');
         }
 
-        $data = array(
-            'deposite_amount' => $deposit_amount,
-            'due_amount' => $due_amount,
-            'payment_date' => date('Y-m-d'),
-            'payment_method' => $payment_method,
-        );
 
-        if (!$cart_has_payment_plan) { // Not payment plan
-            mep_pp_history_add($order->get_id(), $data, $order->get_id());
-        }
         // ********************************
     }
 
@@ -498,25 +532,46 @@ class MEP_PP_Checkout
     public function deposit_order_complete($order_id)
     {
         // Get an instance of the WC_Order object (same as before)
+        $order_amount = get_post_meta($order_id, 'total_value', true);
+        $paid_amount = get_post_meta($order_id, 'deposit_value', true);
+        $due = $order_amount - $paid_amount;
+
         $order = wc_get_order($order_id);
 
-        if (get_post_meta($order_id, 'paying_pp_due_payment', true) != '1') {
+//        if (get_post_meta($order_id, 'paying_pp_due_payment', true) != '1') {
+//            // Trigger when desposit order completed.
+//            $email_customer = WC()->mailer()->get_emails()['WC_Email_Customer_Completed_Order'];
+//            $email_customer->trigger($order_id);
+//
+//            return;
+//        }
 
-            // Trigger when desposit order completed.
-            $email_customer = WC()->mailer()->get_emails()['WC_Email_Customer_Completed_Order'];
-            $email_customer->trigger($order_id);
-
-            return;
+        if(!is_admin()) {
+            $order->set_total(get_post_meta($order_id, 'total_value', true));
+            $order->update_meta_data('deposit_value', get_post_meta($order_id, 'total_value', true), true);
+            $order->update_meta_data('due_payment', 0, true);
         }
 
-        $order->set_total(get_post_meta($order_id, 'total_value', true));
-        $order->update_meta_data('deposit_value', get_post_meta($order_id, 'total_value', true), true);
-        $order->update_meta_data('due_payment', 0, true);
+        if (is_admin()) {
+            $order->update_meta_data('due_state', $due, true);
+        }
         $order->save();
 
         // Trigger when desposit order completed.
         $email_customer = WC()->mailer()->get_emails()['WC_Email_Customer_Completed_Order'];
         $email_customer->trigger($order_id);
+    }
+
+    public function deposit_order_partially_paid($order_id)
+    {
+        $order = wc_get_order($order_id);
+        $total_value = $order->get_meta('total_value', true);
+        $due_state = $order->get_meta('due_state', true);
+        if (is_admin() && $due_state) {
+            $order->update_meta_data('due_payment', $due_state, true);
+            $order->set_total($total_value - $due_state);
+            $order->save();
+        }
     }
 
     public function deposit_order_cancelled($order_id)
@@ -568,9 +623,9 @@ class MEP_PP_Checkout
         if ($get_due_amount) {
             $parent_order->set_status('wc-partially-paid');
 
-        } elseif($get_due_amount === 'no_data') {
+        } elseif ($get_due_amount === 'no_data') {
             return null;
-        } elseif($get_due_amount == 0) {
+        } elseif ($get_due_amount == 0) {
             $parent_order->set_status('wc-processing');
             $parent_order->update_meta_data('paying_pp_due_payment', 1, true);
             $parent_order->update_meta_data('_wc_pp_payment_schedule', '', true);
@@ -614,7 +669,7 @@ class MEP_PP_Checkout
     public function partial_confirm_notification($order_id)
     {
         $return_id = null;
-        if($order_id) {
+        if ($order_id) {
             $args = array(
                 'post_type' => 'wcpp_payment',
                 'posts_per_page' => -1,
@@ -626,21 +681,21 @@ class MEP_PP_Checkout
 
             $wcpp_payments = new WP_Query($args);
 
-            while($wcpp_payments->have_posts()) {
+            while ($wcpp_payments->have_posts()) {
                 $wcpp_payments->the_post();
                 $id = get_the_ID();
                 $order = wc_get_order($id);
                 $status = get_post_status($id);
                 $confirm_email_sent = get_post_meta($id, 'order_confirm_email_sent', true);
-                if($status == 'wc-partially-paid' && $confirm_email_sent !== 'yes') {
+                if ($status == 'wc-partially-paid' && $confirm_email_sent !== 'yes') {
                     $return_id = $id;
                     $_date_paid = get_post_meta($id, '_date_paid', true);
                     $_date_completed = get_post_meta($id, '_date_completed', true);
                     // if($_date_paid && $_date_completed) {
-                        $order->set_status('wc-completed');
-                        $order->save();
-                        update_post_meta($id, 'order_confirm_email_sent', 'yes');
-                        break;
+                    $order->set_status('wc-completed');
+                    $order->save();
+                    update_post_meta($id, 'order_confirm_email_sent', 'yes');
+                    break;
                     // }
                 }
             }
@@ -705,22 +760,22 @@ class MEP_PP_Checkout
     public function pending_payment_button($order)
     {
         $order_id = $order->get_id();
-        if($order->get_parent_id()) {
+        if ($order->get_parent_id()) {
             $order_id = $order->get_parent_id();
             $order = wc_get_order($order_id);
         }
-        mep_pp_history_get($order->get_id());
+        echo mep_pp_history_get($order->get_id());
     }
 
     public function manually_pay_amount_input()
     {
-        $total  = sanitize_text_field($_POST['total']);
-        $pay    = sanitize_text_field($_POST['pay']);
-        $due    = $total - $pay;
+        $total = sanitize_text_field($_POST['total']);
+        $pay = sanitize_text_field($_POST['pay']);
+        $due = $total - $pay;
 
         foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) {
 
-            if(isset($cart_item['_pp_deposit_type']) && $cart_item['_pp_deposit_type'] == 'check_pp_deposit') {
+            if (isset($cart_item['_pp_deposit_type']) && $cart_item['_pp_deposit_type'] == 'check_pp_deposit') {
                 // echo '<pre>';print_r($cart_item);die;
                 $cart_item['_pp_deposit'] = $pay;
                 $cart_item['_pp_due_payment'] = $due;
@@ -810,16 +865,18 @@ class MEP_PP_Checkout
         return $order_status;
     }
 
-    public function disable_email_for_sub_order( $recipient, $order ){
-        if( wp_get_post_parent_id( $order->get_id() ) ){
-           return;
+    public function disable_email_for_sub_order($recipient, $order)
+    {
+        if (wp_get_post_parent_id($order->get_id())) {
+            return;
         } else {
-           return $recipient;
+            return $recipient;
         }
     }
 
-    function check_order_payment($th, $order, $valid_order_statuses) {
-        return $order->has_status( $valid_order_statuses );
+    function check_order_payment($th, $order, $valid_order_statuses)
+    {
+        return $order->has_status($valid_order_statuses);
     }
 
     public function order_statuses($order_statuses)

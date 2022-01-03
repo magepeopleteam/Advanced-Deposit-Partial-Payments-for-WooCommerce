@@ -136,7 +136,7 @@ class MEP_PP_Order
 			</td>
         </tr>
         <tr>
-			<td class="label"><?php mepp_get_option('mepp_text_translation_string_due_amount', __('Due Amount', 'advanced-partial-payment-or-deposit-for-woocommerce'));?>:</td>
+			<td class="label"><?php echo mepp_get_option('mepp_text_translation_string_due_amount', __('Due Amount', 'advanced-partial-payment-or-deposit-for-woocommerce'));?>:</td>
 			<td width="1%"></td>
 			<td class="total">
 				<?php echo wc_price(get_post_meta($order_id, 'due_payment', true)); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped   ?>

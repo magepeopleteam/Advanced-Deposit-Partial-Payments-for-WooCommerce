@@ -10,3 +10,268 @@ div#mep_event_pp_meta_boxes td, div#mep_event_pp_meta_boxes th, div#mep_event_pp
 input#_mep_enable_pp_deposit {
     display: inline-block!important;
 }
+.mep_style_ta_l {
+    text-align: left;
+}
+.mep_style_ta_r {
+    text-align: right;
+}
+.wcpp-no-data {
+    font-weight: 700;
+    color: #a88000;
+    font-size: 16px;
+}
+.wcpp-img-sm {
+    width: 80px
+}
+.wcpp-btn {
+    background: #60a0ec;
+    border: 1px solid #60a0ec;
+    padding: 8px;
+    color: #fff;
+    border-radius: 4px;
+    text-decoration: none;
+    cursor: pointer;
+}
+.mepp_d_abs {
+    position: absolute;
+}
+.mepp-page-heading {
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+    margin-right: 20px;
+    color: #555;
+}
+.mepp-table-container {
+    padding: 10px;
+    background: #ffffff;
+    margin-right: 20px;
+    border-radius: 5px;
+    box-shadow: -1px 0 3px 2px #edebeb;
+}
+.mepp-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.mepp-table th {
+    text-align: center;
+}
+.mepp-table td {
+    border: 1px solid #ffd3e2;
+    padding: 10px 5px;
+    text-align: center;
+    position: relative;
+}
+.mepp-table tbody > tr:nth-child(odd) {
+    background: #ecf5fd
+}
+.mepp-table tbody tr:nth-child(even) {
+    background: #fff
+}
+.mepp-table tr.active {
+    background: #d3ffe0;
+}
+.mepp-table > thead > tr {
+    background: #f26190;
+}
+.mepp-table > thead th {
+    border: 1px solid #ffd3e2;
+    color: #fff;
+    padding: 5px;
+}
+.mepp-form-inner {
+    display: flex;
+    align-items: flex-end;
+}
+.mepp-form-group label {
+    display: block;
+}
+.mepp-form-group button {
+    padding: 12px 15px;
+    border-radius: 5px;
+    border: 1px solid #a2a2a2;
+    background: #867643;
+    color: #fff;
+}
+.mepp-table tr th:first-child,
+.mepp-table tr td:first-child {
+    border-left: 0;
+}
+.mepp-table tr th:last-child,
+.mepp-table tr td:last-child {
+    border-right: 0;
+}
+.mepp-table tr:last-child td {
+    border-bottom: 0;
+}
+.mepp-filter-container {
+    margin-bottom: 20px;
+    margin-right: 20px;
+}
+.mepp-filter-container input,
+.mepp-filter-container select {
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    min-width: 250px;
+}
+.wcpp-filter-loader {
+    display: none;
+}
+.wcpp-filter-loader img {
+    width: 27px;
+    vertical-align: text-bottom;
+    margin-left: 2px;
+}
+.wcpp-btn.mep-view-order {
+    margin-right: 3px;
+}
+.wcpp-btn.mep-edit-order {
+    background: #ffa032;
+    border-color: #ffa032;
+    margin-right: 3px;
+    line-height: 1.9;
+}
+.wcpp-partial-order-table .mep-pp-history-table {
+    background: #dfdfdf96;
+    color: #373737;
+    border-collapse: collapse;
+}
+.wcpp-btn.mep-view-history {
+    background: #fc6f64;
+    border-color: #fc6f64;
+}
+.wcpp-partial-order-table .mep-pp-history-table th,
+.wcpp-partial-order-table .mep-pp-history-table td {
+    border: 1px solid #ffd3e2;
+    text-align: center!important;
+}
+.wcpp-partial-order-table .mep-pp-order-detail-table th,
+.wcpp-partial-order-table .mep-pp-order-detail-table td {
+    text-align: center;
+}
+.wcpp-partial-order-action-container {
+    display: flex;
+    justify-content: center;
+    height: 42px;
+}
+.wcpp-partial-order-action-loader {
+    margin-right: 3px;
+    visibility: hidden;
+}
+.woocommerce-column__title {
+    color: #437385;
+    text-transform: capitalize;
+    text-decoration: underline;
+}
+.mep-pp-history-table tr:last-child td {
+    border-bottom: 2px solid #f26190;
+}
+/*Mepp Modal*/
+/* The Modal (background) */
+.modal {
+    display: none;
+    position: absolute;
+    z-index: 1;
+    padding-top: 100px;
+    left: 0;
+    top: 0;
+    width: 99%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgb(206 206 206 / 57%);
+}
+.mepp-resend-conatiner {
+    position: absolute;
+    right: 5px;
+    top: 5px;
+}
+.mepp-next-reminder-send-now {
+    padding: 5px;
+    background: #d63638;
+    color: #fff;
+    border: 1px solid #d63638;
+    border-radius: 3px;
+    cursor: pointer;
+}
+.mepp-next-reminder-send-now.mepp-resen-btn {
+    background: #a59c35;
+    color: #fff;
+    border: 1px solid #a59c35;
+}
+.mepp-inner-loading {
+    display: none;
+}
+
+/* Modal Content */
+.modal-content {
+    position: relative;
+    background-color: #fefefe;
+    top: 30%;
+    margin: auto;
+    padding: 0;
+    border: 1px solid #888;
+    width: 60%;
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
+    -webkit-animation-name: animatetop;
+    -webkit-animation-duration: 0.4s;
+    animation-name: animatetop;
+    animation-duration: 0.4s
+}
+
+/* Add Animation */
+@-webkit-keyframes animatetop {
+    from {top:-300px; opacity:0}
+    to {top:30%; opacity:1}
+}
+
+@keyframes animatetop {
+    from {top:-300px; opacity:0}
+    to {top:30%; opacity:1}
+}
+
+/* The Close Button */
+.mepModalclose {
+    color: white;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    position: absolute;
+    right: 0;
+    top: 0;
+    padding: 0 5px;
+    line-height: 1;
+    background: #987b1d;
+    border-bottom-left-radius: 5px;
+}
+
+.mepModalclose:hover,
+.mepModalclose:focus {
+    color: #ff8687;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.modal-header {
+    padding: 2px 16px;
+    background-color: #d2b149;
+    color: white;
+}
+
+.modal-body {
+    padding: 10px 10px;
+    display: flex;
+    justify-content: center;
+}
+
+.modal-footer {
+    padding: 2px 16px;
+    background-color: #d2b149;
+    color: white;
+}
+#wcpp-loader {width: 50px}
+.mepModalBtn:focus,
+.mepModalBtn:visited {
+    background: #d8b02c;
+}
+/*Mepp Modal END*/

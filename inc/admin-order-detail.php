@@ -37,5 +37,5 @@ function mage_partial_payments_summary()
     if (!$order) {
         return;
     }
-    mep_pp_history_get($order->get_id(), false);
+    echo mep_pp_history_get($order->get_id(), false, false);
 }

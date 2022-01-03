@@ -22,7 +22,7 @@ input.mep-pp-user-amountinput {
 }
 .mep-pp-history-table tr th,
 .mep-pp-history-table tr td {
-    text-align: left;
+    text-align: center;
 }
 .mep-pp-history-table {
     margin-bottom: 20px;
@@ -90,4 +90,36 @@ ul.mep-pp-payment-terms label{margin: 0;}
 }
 .mep_style_tt_upper {
     text-transform: uppercase;
+}
+.mepp-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.mepp-table th {
+    text-align: center;
+}
+.mepp-table td {
+    border: 1px solid #dfdfdf;
+    padding: 10px 5px;
+    text-align: center;
+    position: relative;
+}
+.mepp-table tbody > tr:nth-child(odd) td {
+    background: #ecf5fd
+}
+.mepp-table tbody tr:nth-child(even) td {
+    background: #fff
+}
+.mepp-table tr.active {
+    background: #d3ffe0;
+}
+.mepp-table > thead > tr {
+    background: #f26190;
+}
+.mepp-table > thead th {
+    border: 1px solid #f26190;
+    background: #f26190;
+    color: #fff;
+    padding: 5px 5px;
+    text-align: center;
 }
