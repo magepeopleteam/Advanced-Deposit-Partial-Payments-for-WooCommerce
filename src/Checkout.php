@@ -206,6 +206,8 @@ class MEP_PP_Checkout
             $next_payment_reminder_date = strtotime("+" . intval($next_payment_reminder_day_num) . " days");
             $parent_order->update_meta_data('_wc_pp_next_payment_reminder_date', $next_payment_reminder_date);
 
+            $parent_order->save();
+
         }
 
         // Generate Next Payment Reminder Date
@@ -216,9 +218,9 @@ class MEP_PP_Checkout
             $next_payment_date = get_post_meta($next_payment_order_id, '_wc_pp_partial_payment_date', true);
             $next_payment_reminder_date = strtotime("-" . intval($next_payment_reminder_day_num) . " days", $next_payment_date);
             $parent_order->update_meta_data('_wc_pp_next_payment_reminder_date', $next_payment_reminder_date);
-        }
 
-        $parent_order->save();
+            $parent_order->save();
+        }
 
         return $order;
     }
@@ -532,9 +534,7 @@ class MEP_PP_Checkout
     public function deposit_order_complete($order_id)
     {
         // Get an instance of the WC_Order object (same as before)
-        $order_amount = get_post_meta($order_id, 'total_value', true);
-        $paid_amount = get_post_meta($order_id, 'deposit_value', true);
-        $due = $order_amount - $paid_amount;
+        
 
         $order = wc_get_order($order_id);
 
@@ -546,13 +546,16 @@ class MEP_PP_Checkout
 //            return;
 //        }
 
-        if(!is_admin()) {
-            $order->set_total(get_post_meta($order_id, 'total_value', true));
-            $order->update_meta_data('deposit_value', get_post_meta($order_id, 'total_value', true), true);
-            $order->update_meta_data('due_payment', 0, true);
-        }
+        // if(!is_admin()) {
+        //     $order->set_total(get_post_meta($order_id, 'total_value', true));
+        //     $order->update_meta_data('deposit_value', get_post_meta($order_id, 'total_value', true), true);
+        //     $order->update_meta_data('due_payment', 0, true);
+        // }
 
         if (is_admin()) {
+            $order_amount = get_post_meta($order_id, 'total_value', true);
+            $paid_amount = get_post_meta($order_id, 'deposit_value', true);
+            $due = (float)$order_amount - (float)$paid_amount;
             $order->update_meta_data('due_state', $due, true);
         }
         $order->save();
@@ -797,7 +800,7 @@ class MEP_PP_Checkout
     public function checkout_payment_url($url, $order)
     {
         if (get_post_meta($order->get_id(), 'due_payment', true) == '0' || get_post_meta($order->get_id(), 'paying_pp_due_payment', true) == '1') {
-            return null;
+            return $url;
         }
 
         if ($order->get_type() !== 'wcpp_payment') {

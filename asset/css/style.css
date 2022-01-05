@@ -55,6 +55,11 @@ ul.mep-pp-payment-terms label{margin: 0;}
 .mep-single-plan.plan-details table thead {
     background-color: #f6f3f3;
 }
+ul.mep-pp-payment-terms label input {
+    width: 21px;
+    height: 25px;
+    vertical-align: top;
+}
 .mep-single-plan.plan-details table th {
     padding:5px;
     font-size:14px;

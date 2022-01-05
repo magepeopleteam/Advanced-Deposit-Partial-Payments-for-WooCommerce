@@ -345,7 +345,7 @@ if (!function_exists('mep_pp_show_payment_option_html')) {
 
         // $event_id = $event_id ? $event_id : get_the_id();
         if (meppp_is_product_type_pp_deposit($event_id)) {
-            $deposit_type = get_post_meta($event_id, '_mep_pp_deposits_type', true) ? get_post_meta($event_id, '_mep_pp_deposits_type', true) : 'percent';
+            // $deposit_type = get_post_meta($event_id, '_mep_pp_deposits_type', true) ? get_post_meta($event_id, '_mep_pp_deposits_type', true) : 'percent';
             $_pp_deposit_value = get_post_meta($event_id, '_mep_pp_deposits_value', true) ? get_post_meta($event_id, '_mep_pp_deposits_value', true) : 0;
             $_pp_minimum_value = get_post_meta($event_id, '_mep_pp_minimum_value', true) ? get_post_meta($event_id, '_mep_pp_minimum_value', true) : 0;
             // ticket_type
@@ -353,6 +353,12 @@ if (!function_exists('mep_pp_show_payment_option_html')) {
             $_pp_payment_plan_ids = get_post_meta($event_id, '_mep_pp_payment_plan', true);
             $_pp_payment_plan_ids = $_pp_payment_plan_ids ? maybe_unserialize($_pp_payment_plan_ids) : array();
             $deposit_type = get_post_meta($event_id, '_mep_pp_deposits_type', true);
+            $global_deposit_type = get_option('mepp_default_partial_type') ? get_option('mepp_default_partial_type') : 'percent';
+            $global_deposit_value = get_option('mepp_default_partial_amount') ? get_option('mepp_default_partial_amount') : '';
+            $deposit_type = $deposit_type ? $deposit_type : $global_deposit_type;
+
+            $_pp_deposit_value = $_pp_deposit_value ? $_pp_deposit_value : $global_deposit_value;
+            
             ?>
             <div class="mep-pp-payment-btn-wraper">
                 <input type="hidden" name='currency_symbol' value="<?php echo get_woocommerce_currency_symbol(); ?>">
