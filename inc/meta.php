@@ -18,14 +18,15 @@ if (!function_exists('mep_pp_meta_boxs')) {
                     'title'     =>     __('', 'mage-eventpress-gq'),
                     'description'     => __('', 'mage-eventpress-gq'),
                     'options'     => array(
+                        apply_filters('mepp_exclude_product_from_default_setting_event', []),
                         array(
                             'id'    => '_mep_enable_pp_deposit',
-                            'title'    => __('Enable Deposit', 'text-domain'),
-                            'details'  => __('Enable deposits feature for this event?.', 'text-domain'),
+                            'title'    => __('Enable Deposit', 'advanced-partial-payment-or-deposit-for-woocommerce'),
+                            'details'  => __('Enable deposits feature for this event?.', 'advanced-partial-payment-or-deposit-for-woocommerce'),
                             'type'    => 'checkbox',
                             'default'    => '',
                             'args'    => array(
-                                'yes'  => __('Enable deposits feature.', 'text-domain'),
+                                'yes'  => __('Enable deposits feature.', 'advanced-partial-payment-or-deposit-for-woocommerce'),
                             ),
                         ),
                         array(
@@ -149,6 +150,16 @@ if (!function_exists('mep_pp_pp_deposits_options_fileds')) {
         <div id="woo_desposits_options" class="panel woocommerce_options_panel">
             <div class="options_group">
                 <?php
+
+                woocommerce_wp_checkbox(
+                    array(
+                        'id'          => '_mep_exclude_from_global_deposit',
+                        'label'       => __('Exclude this product', 'advanced-partial-payment-or-deposit-for-woocommerce'),
+                        'value'       => get_post_meta(get_the_ID(), '_mep_exclude_from_global_deposit', true),
+                        'description' => __('Exclude this product from global deposit setting.', 'advanced-partial-payment-or-deposit-for-woocommerce'),
+                    )
+                );
+
                 woocommerce_wp_checkbox(
                     array(
                         'id'          => '_mep_enable_pp_deposit',
@@ -205,10 +216,12 @@ if (!function_exists('mep_pp_pp_deposits_product_fields_save')) {
     function mep_pp_pp_deposits_product_fields_save($post_id)
     {
         $field_mep_enable_pp_deposit = isset($_POST['_mep_enable_pp_deposit']) ? 'yes' : 'no';
+        $field_mep_exclude_from_global_deposit = isset($_POST['_mep_exclude_from_global_deposit']) ? 'yes' : 'no';
         $field_mep_pp_deposits_type  = sanitize_text_field($_POST['_mep_pp_deposits_type']);
         $field_mep_pp_deposits_value = sanitize_text_field($_POST['_mep_pp_deposits_value']);
         $field_mep_pp_minimum_value = sanitize_text_field($_POST['_mep_pp_minimum_value']);
         update_post_meta($post_id, '_mep_enable_pp_deposit', $field_mep_enable_pp_deposit);
+        update_post_meta($post_id, '_mep_exclude_from_global_deposit', $field_mep_exclude_from_global_deposit);
         if (!empty($field_mep_pp_deposits_type)) {
             update_post_meta($post_id, '_mep_pp_deposits_type', $field_mep_pp_deposits_type);
         }

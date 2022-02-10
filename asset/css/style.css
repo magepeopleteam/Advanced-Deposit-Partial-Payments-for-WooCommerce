@@ -55,8 +55,9 @@ ul.mep-pp-payment-terms label{margin: 0;}
 .mep-single-plan.plan-details table thead {
     background-color: #f6f3f3;
 }
-ul.mep-pp-payment-terms label input {
-    width: 21px;
+ul.mep-pp-payment-terms label input,
+.mep-single-plan-wrap input {
+    width: 25px!important;
     height: 25px;
     vertical-align: top;
 }
@@ -79,8 +80,9 @@ ul.mep-pp-payment-terms label input {
     margin-bottom: 10px;
 }
 .mep-pp-payment-btn-wraper .mep-pp-payment-terms {
-    background: #ddd;
+    background: #efe9e9;
     margin: 10px 0;
+    padding-left: 0;
 }
 .mep_due_pay_btn {
     display: block;
@@ -127,4 +129,27 @@ ul.mep-pp-payment-terms label input {
     color: #fff;
     padding: 5px 5px;
     text-align: center;
+}
+.wcpp-deposit-types .inner {
+    display: flex;
+    flex-direction: column;
+}
+.mepp-payment-plan-option-frontend {
+    display: none;
+}
+.mepp_custom_message_product {
+    background: #f6e8e8;
+    border-left: 5px solid green;
+    padding: 5px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+.mepp-payment-plan-cart-btn {
+    width: 100%;
+    padding: 3px;
+    font-size: 13px;
+    background: #262626;
+}
+ul.mep-pp-payment-terms .mep-pp-user-amountinput {
+    width: 50px !important;
 }

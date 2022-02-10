@@ -3,6 +3,14 @@
     $(document).ready(function () {
         let parent = $('form.cart');
         parent.find('div.quantity [name="quantity"]').trigger('change');
+
+        // Initail deposit type check in setting
+        const deposit_type_selected = $('input[name="_pp_deposit_system"]:checked').attr('data-deposit-type');
+        if (deposit_type_selected === 'payment_plan') {
+            $('.mepp-payment-plan-option-frontend').show();
+        } else {
+            $('.mepp-payment-plan-option-frontend').hide();
+        }
     });
     $(document).on('change', '#mage_event_submit [name="option_qty[]"],#mage_event_submit [name="event_extra_service_qty[]"]', function () {
         mpwemapp_price_calculation();
@@ -47,7 +55,8 @@
             $(this).prev('.mep-pp-show-detail').html('View Details');
         });
     });
-    $(document).on('click', '.mep-pp-show-detail', function () {
+    $(document).on('click', '.mep-pp-show-detail', function (e) {
+        e.preventDefault();
         let $this = $(this);
         let parent = $(this).closest('.mep-product-payment-plans');
         let next = $this.next('.mep-single-plan.plan-details');
@@ -101,48 +110,60 @@
             let $this = $(this)
             let total = $this.attr('data-total');
             let pay = $this.val();
+            let max = $this.attr('max');
             let due = total - pay;
             let currency = $(this).attr('data-currency');
             let deposit_type = $this.attr('data-deposit-type');
 
-            pay_input = setTimeout(async function () {
-                console.log('Calling...');
+            let validate = true;
 
-                let res = pay;
-                if (deposit_type == 'minimum_amount') {
-                    res = await mepMinAmountValidation($this, deposit_type, pay);
-                    $this.val(res);
+            if(max) {
+                max = parseFloat(max);
+                pay = parseFloat(pay);
+
+                if(max < pay) {
+                    validate = false;
+                    $this.val('');
+                    console.log(due);
                 }
-                console.log(res);
+            }
 
-                if (res) {
-                    jQuery.ajax({
-                        url: php_vars.ajaxurl,
-                        type: "POST",
-                        dataType: 'json',
-                        async: true,
-                        data: {
-                            //action name (must be consistent with your php callback)
-                            action: 'manually_pay_amount_input',
-                            total: total,
-                            pay: res,
-                        },
-                        success: function (data) {
-                            if (data) {
-                                $this.parents('tr').next().find('td').html(data.with_symbol);
-                                $this.parents('tr').next().find('td').append('<input type="hidden" name="manually_due_amount" value="' + data.amount + '" />')
+            if(validate) {
+                pay_input = setTimeout(async function () {
+
+                    let res = pay;
+                    if (deposit_type == 'minimum_amount') {
+                        res = await mepMinAmountValidation($this, deposit_type, pay);
+                        $this.val(res);
+                    }
+    
+                    if (res) {
+                        jQuery.ajax({
+                            url: php_vars.ajaxurl,
+                            type: "POST",
+                            dataType: 'json',
+                            async: true,
+                            data: {
+                                //action name (must be consistent with your php callback)
+                                action: 'manually_pay_amount_input',
+                                total: total,
+                                pay: res,
+                            },
+                            success: function (data) {
+                                if (data) {
+                                    $this.parents('tr').next().find('td').html(data.with_symbol);
+                                    $this.parents('tr').next().find('td').append('<input type="hidden" name="manually_due_amount" value="' + data.amount + '" />')
+                                }
+    
                             }
-
-                        }
-                    })
-                } else {
-                    $this.parents('tr').next().find('td').html(currency + due);
-                    $this.parents('tr').next().find('td').append('<input type="hidden" name="manually_due_amount" value="' + due + '" />')
-                }
-
-                console.log('I am the end');
-                pay_input = null;
-            }, 1000)
+                        })
+                    } else {
+                        $this.parents('tr').next().find('td').html(currency + due);
+                        $this.parents('tr').next().find('td').append('<input type="hidden" name="manually_due_amount" value="' + due + '" />')
+                    }
+                    pay_input = null;
+                }, 1000);
+            }
 
 
         });
@@ -163,7 +184,52 @@
             call();
 
         });
+
+        // Deposit Type switch in checkout page
+        $(document).on('change', 'input[name="_pp_deposit_system"]', function () {
+            const value = $(this).val();
+            const deposit_type = $(this).attr('data-deposit-type');
+
+            if (deposit_type === 'payment_plan') {
+                $('.mepp-payment-plan-option-frontend').show();
+                return 0;
+            } else {
+                $("#mepp_default_payment_plan").val($("#mepp_default_payment_plan option:first").val());
+                $('.mepp-payment-plan-option-frontend').hide();
+            }
+
+            if (value) {
+                mepRequestSwitchPaymentType(value);
+            }
+        })
+
+        $(document).on('change', 'select[id="mepp_default_payment_plan"]', function () {
+            const selected_value = $("option:selected", this).val();
+            if (selected_value) {
+                mepRequestSwitchPaymentType('check_pp_deposit', selected_value);
+            }
+        });
     });
+
+    function mepRequestSwitchPaymentType(payment_type, payment_plan_id = '') {
+        jQuery.ajax({
+            url: php_vars.ajaxurl,
+            type: "POST",
+            data: {
+                action: 'wcpp_deposit_type_switch_frontend',
+                payment_type,
+                payment_plan_id
+            },
+            success: function (data) {
+                jQuery('body').trigger('update_checkout'); //  for checkout page
+                // For cart page
+                const cart_update_btn = jQuery('button[name="update_cart"]');
+                cart_update_btn.removeAttr('disabled');
+                cart_update_btn.attr('aria-disabled', 'false');
+                cart_update_btn.trigger('click');
+            }
+        })
+    }
 
     function mepMinAmountValidation($this, deposit_type, val) {
         let returnValue = '';
@@ -215,7 +281,6 @@
                 //alert(price);
                 let total_payment = parseFloat($(this).data('total-percent'));
                 let total_price = total_payment * price / 100;
-                console.log(price);
                 //alert(price);
                 $(this).html(mp_event_wo_commerce_price_format(total_price));
 

@@ -114,6 +114,7 @@ if (!function_exists('meppp_pp_deposit_to_pay')) {
         $total_pp_deposit = 0; // no value
         $cart_has_payment_plan = false; // Check cart has payment plan deposit system. init false
         $order_payment_plan = array();
+        $has_deposit_type_minimum = false;
         foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) {
 
             if (function_exists('mep_product_exists')) {
@@ -125,16 +126,46 @@ if (!function_exists('meppp_pp_deposit_to_pay')) {
 
             $total_pp_deposit += (meppp_is_product_type_pp_deposit($product_id) && isset($cart_item['_pp_deposit_type']) && $cart_item['_pp_deposit_type'] == 'check_pp_deposit') ? $cart_item['_pp_due_payment'] : null;
 
-            if ($cart_item['_pp_deposit_system'] == 'payment_plan') {
-                // $cart_has_payment_plan = true;
-                $order_payment_plan = isset($cart_item['_pp_order_payment_terms']) ? $cart_item['_pp_order_payment_terms'] : array();
+            if (isset($cart_item['_pp_deposit_system'])) {
+                if ($cart_item['_pp_deposit_system'] === 'minimum_amount') {
+                    $has_deposit_type_minimum = true;
+                }
+
+                if ($cart_item['_pp_deposit_system'] == 'payment_plan') {
+                    // $cart_has_payment_plan = true;
+                    $order_payment_plan = isset($cart_item['_pp_order_payment_terms']) ? $cart_item['_pp_order_payment_terms'] : array();
+                }
             }
         }
 
-        $enable_checkout_zero_price = get_option('meppp_checkout_zero_price') ? get_option('meppp_checkout_zero_price') : 'no';
-        $value = $enable_checkout_zero_price == 'yes' ? WC()->cart->get_total('f') - $total_pp_deposit : WC()->cart->get_total('f') - $total_pp_deposit;
+        $enable_checkout_zero_price = apply_filters('mepp_enable_zero_price_checkout', 'no');
+        if (mepp_check_paypal_has() && !$has_deposit_type_minimum) {
+            $value = $enable_checkout_zero_price == 'yes' ? WC()->cart->get_total('f') - $total_pp_deposit : WC()->cart->get_total('f');
+        } else {
+            $value = $enable_checkout_zero_price == 'yes' ? WC()->cart->get_total('f') - $total_pp_deposit : WC()->cart->get_total('f') - $total_pp_deposit;
+        }
 
         echo apply_filters('mep_pp_deposit_top_pay_checkout_page_html', wc_price($value), $value, $order_payment_plan, $product_id); // WPCS: XSS ok.
+    }
+}
+
+if (!function_exists('meppp_available_payment_methods')) {
+    function meppp_available_payment_methods()
+    {
+        $gateways = WC()->payment_gateways->get_available_payment_gateways();
+        $enabled_gateways = [];
+
+        if ($gateways) {
+            foreach ($gateways as $gateway) {
+
+                if ($gateway->enabled == 'yes') {
+                    $enabled_gateways[] = $gateway->id;
+
+                }
+            }
+        }
+
+        return $enabled_gateways;
     }
 }
 
@@ -228,6 +259,15 @@ if (!function_exists('meppp_is_product_type_pp_deposit')) {
         }
         return false;
     }
+}
+
+// Global Partial Enable/Disable
+add_filter('global_product_type_pp_deposit', 'mep_global_product_type_pp_deposit_control', 10);
+function mep_global_product_type_pp_deposit_control()
+{
+    $global_enable = get_option('mepp_enable_partial_by_default') ? get_option('mepp_enable_partial_by_default') : 'no';
+
+    return $global_enable === 'yes' ? true : false;
 }
 
 /**
@@ -341,24 +381,43 @@ if (!function_exists('mep_pp_show_payment_option')) {
 if (!function_exists('mep_pp_show_payment_option_html')) {
     function mep_pp_show_payment_option_html($event_id)
     {
-        $isForcePartialPayment = get_option('meppp_force_partial_payment') ? get_option('meppp_force_partial_payment') : 'no';
+        $isForcePartialPayment = apply_filters('mepp_force_partial_payment', 'no');
 
-        // $event_id = $event_id ? $event_id : get_the_id();
         if (meppp_is_product_type_pp_deposit($event_id)) {
-            // $deposit_type = get_post_meta($event_id, '_mep_pp_deposits_type', true) ? get_post_meta($event_id, '_mep_pp_deposits_type', true) : 'percent';
             $_pp_deposit_value = get_post_meta($event_id, '_mep_pp_deposits_value', true) ? get_post_meta($event_id, '_mep_pp_deposits_value', true) : 0;
-            $_pp_minimum_value = get_post_meta($event_id, '_mep_pp_minimum_value', true) ? get_post_meta($event_id, '_mep_pp_minimum_value', true) : 0;
             // ticket_type
             // get payment plan id of this event
-            $_pp_payment_plan_ids = get_post_meta($event_id, '_mep_pp_payment_plan', true);
-            $_pp_payment_plan_ids = $_pp_payment_plan_ids ? maybe_unserialize($_pp_payment_plan_ids) : array();
-            $deposit_type = get_post_meta($event_id, '_mep_pp_deposits_type', true);
             $global_deposit_type = get_option('mepp_default_partial_type') ? get_option('mepp_default_partial_type') : 'percent';
             $global_deposit_value = get_option('mepp_default_partial_amount') ? get_option('mepp_default_partial_amount') : '';
-            $deposit_type = $deposit_type ? $deposit_type : $global_deposit_type;
 
-            $_pp_deposit_value = $_pp_deposit_value ? $_pp_deposit_value : $global_deposit_value;
-            
+            $is_exclude_from_global = get_post_meta($event_id, '_mep_exclude_from_global_deposit', true);
+            $is_deposit_enable = get_post_meta($event_id, '_mep_enable_pp_deposit', true);
+            if ($is_exclude_from_global === 'yes' && $is_deposit_enable === 'yes') { // From Product setting
+                $_pp_deposit_value = get_post_meta($event_id, '_mep_pp_deposits_value', true) ? get_post_meta($event_id, '_mep_pp_deposits_value', true) : 0;
+                $deposit_type = get_post_meta($event_id, '_mep_pp_deposits_type', true) ? get_post_meta($event_id, '_mep_pp_deposits_type', true) : '';
+                $_pp_minimum_value = get_post_meta($event_id, '_mep_pp_minimum_value', true) ? get_post_meta($event_id, '_mep_pp_minimum_value', true) : 0;
+                $_pp_payment_plan_ids = get_post_meta($event_id, '_mep_pp_payment_plan', true);
+                $_pp_payment_plan_ids = $_pp_payment_plan_ids ? maybe_unserialize($_pp_payment_plan_ids) : array();
+            } else { // From global setting
+                $_pp_deposit_value = $_pp_minimum_value = $global_deposit_value;
+                $deposit_type = $global_deposit_type;
+                $_pp_payment_plan_ids = get_option('mepp_default_payment_plan') ? maybe_unserialize(get_option('mepp_default_payment_plan')) : [];
+            }
+
+            // Exception handle for deposit type
+            if (!wcppe_enable_for_event()) {
+                if ($deposit_type === 'minimum_amount' || $deposit_type === 'payment_plan') {
+                    update_option('mepp_default_partial_type', 'percent');
+                    update_post_meta($event_id, '_mep_pp_deposits_type', 'percent');
+                    $deposit_type = 'percent';
+                }
+            }
+
+            $default_partial_for_page = apply_filters('mepp_partial_option_for_page', 'product_detail');
+            if ($default_partial_for_page === 'checkout') {
+                return 0;
+            }
+
             ?>
             <div class="mep-pp-payment-btn-wraper">
                 <input type="hidden" name='currency_symbol' value="<?php echo get_woocommerce_currency_symbol(); ?>">
@@ -409,13 +468,14 @@ if (!function_exists('mep_pp_show_payment_option_html')) {
                                 ?>
                             </label>
                         </li>
-                        <?php if($isForcePartialPayment !== 'yes') : ?>
-                        <li>
-                            <label for='mep_pp_full_payment'>
-                                <input type="radio" id='mep_pp_full_payment' name="deposit-mode" value="check_full"/>
-                                <?php echo mepp_get_option('mepp_text_translation_string_full_payment', __('Full Payment', 'advanced-partial-payment-or-deposit-for-woocommerce')); ?>
-                            </label>
-                        </li>
+                        <?php if ($isForcePartialPayment != 'yes') : ?>
+                            <li>
+                                <label for='mep_pp_full_payment'>
+                                    <input type="radio" id='mep_pp_full_payment' name="deposit-mode"
+                                           value="check_full"/>
+                                    <?php echo mepp_get_option('mepp_text_translation_string_full_payment', __('Full Payment', 'advanced-partial-payment-or-deposit-for-woocommerce')); ?>
+                                </label>
+                            </li>
                         <?php endif; ?>
                     </ul>
                     <?php ($deposit_type == 'payment_plan' || $deposit_type == 'percent') ? do_action('mep_payment_plan_list', $_pp_payment_plan_ids, $event_id, $deposit_type) : null; ?>
@@ -804,8 +864,8 @@ if (!function_exists('mep_pp_deposti_type_display_name')) {
                     $name = 'Fixed';
                     $name = $with_value ? wc_price($cart_item['_pp_deposit_value']) . ' ' . $name : $name;
                     break;
-                case 'manual':
-                    $name = 'Custom Amount';
+                case 'minimum_amount':
+                    $name = 'Minimum Amount';
                     $name = $with_value ? wc_price($cart_item['_pp_deposit']) . ' ' . $name : $name;
                     break;
                 case 'payment_plan':
@@ -873,7 +933,7 @@ if (!function_exists('mep_pp_payment_plan_name')) {
     {
         $name = '';
         if ($plan_id) {
-            $name = get_term($plan_id)->name;
+            $name = '<strong>' . get_term($plan_id)->name . '</strong>';
         }
         return $name;
     }
@@ -949,7 +1009,7 @@ if (!function_exists('mep_payment_plan_list_callback')) {
                         $i++;
                     endforeach;
                 elseif ($deposit_type == 'percent'):
-                    ?><p style="text-align: center">
+                    ?><p>
                     <strong><?php esc_attr_e('Deposit Amount :', 'advanced-partial-payment-or-deposit-for-woocommerce'); ?>
                         <span class="payment_amount"></span></strong></p>
                 <?php
@@ -1064,7 +1124,7 @@ if (!function_exists('mep_pp_sanitize_array')) {
 // Get Zero price checkout allow from setting
 function mep_is_zero_price_checkout_allow()
 {
-    $res = get_option('meppp_checkout_zero_price') ? get_option('meppp_checkout_zero_price') : 'no';
+    $res = apply_filters('mepp_enable_zero_price_checkout', 'no');
 
     return $res;
 }
@@ -1343,7 +1403,7 @@ function mepp_admin_partial_order_filter()
         )
     );
 
-    if($value) {
+    if ($value) {
         switch ($filter_type) {
             case 'order_id':
                 $args = array_merge($args, array(
@@ -1542,6 +1602,108 @@ function mepp_admin_send_now_next_reminder()
     exit();
 }
 
+add_action('wp_ajax_wcpp_deposit_type_switch_frontend', 'wcpp_deposit_type_switch_frontend');
+add_action('wp_ajax_nopriv_wcpp_deposit_type_switch_frontend', 'wcpp_deposit_type_switch_frontend');
+function wcpp_deposit_type_switch_frontend()
+{
+    $payment_type = $_POST['payment_type'];
+    $payment_plan_id = isset($_POST['payment_plan_id']) ? $_POST['payment_plan_id'] : '';
+    $default_deposit_value = (float)get_option('mepp_default_partial_amount') ? get_option('mepp_default_partial_amount') : 0;
+    $deposit_type = get_option('mepp_default_partial_type') ? get_option('mepp_default_partial_type') : 'percent';
+
+    $cart = WC()->cart->cart_contents;
+    foreach ($cart as $key => $item) {
+
+        $deposit_amount = 0;
+        $line_total = (float)$item['line_total'];
+
+        if ($payment_type === 'check_pp_deposit') {
+            $item['_pp_deposit_type'] = 'check_pp_deposit';
+            $item['_pp_deposit_system'] = $deposit_type;
+            if ($deposit_type === 'percent') {
+                $deposit_amount = ($line_total * $default_deposit_value) / 100;
+            } else {
+                $deposit_amount = $default_deposit_value;
+            }
+
+            $item['_pp_deposit_value'] = $default_deposit_value;
+
+            if ($payment_plan_id) {
+                $payment_terms = mep_make_payment_terms($line_total, $payment_plan_id);
+                $item['_pp_deposit'] = $payment_terms['deposit_amount'];
+                $item['_pp_due_payment'] = $line_total - $payment_terms['deposit_amount'];
+
+                $item['_pp_order_payment_terms'] = $payment_terms['payment_terms'];
+                $item['_pp_deposit_payment_plan_name'] = mep_pp_payment_plan_name($payment_plan_id);
+                $item['_pp_deposit_payment_plan_id'] = $payment_plan_id;
+            } else {
+                $item['_pp_deposit'] = $deposit_amount;
+
+                $item['_pp_due_payment'] = $line_total - $deposit_amount;
+                $item['_pp_order_payment_terms'] = '';
+                $item['_pp_deposit_payment_plan_name'] = '';
+            }
+        } else {
+            $item['_pp_deposit_type'] = 'check_full';
+            $item['_pp_deposit_system'] = '';
+            $item['_pp_deposit'] = 0;
+            $item['_pp_deposit_value'] = 0;
+            $item['_pp_due_payment'] = 0;
+            $item['_pp_order_payment_terms'] = '';
+            $item['_pp_deposit_payment_plan_name'] = '';
+            $item['_pp_deposit_payment_plan_id'] = '';
+        }
+
+        WC()->cart->cart_contents[$key] = $item;
+    }
+
+    WC()->cart->set_session(); // Finaly Update Cart
+    exit();
+}
+
+function mep_make_payment_terms($total_amount, $pament_plan_id)
+{
+    $payment_terms = array();
+    $deposit_amount = 0;
+    $due_amount = 0;
+    $this_plan = get_term_meta($pament_plan_id);
+    $this_plan_schedule = maybe_unserialize((maybe_unserialize($this_plan['mepp_plan_schedule'][0])));
+    if ($this_plan_schedule) {
+        $date = date('Y-m-d');
+        $down_payment = $this_plan['mepp_plan_schedule_initial_pay_parcent'][0];
+        $payment_terms[] = array(
+            'id' => '',
+            'title' => 'Deposit',
+            'type' => 'deposit',
+            'date' => $date,
+            'total' => mep_percentage_value($down_payment, $total_amount),
+            'due' => $total_amount - mep_percentage_value($down_payment, $total_amount),
+        );
+
+        $deposit_amount = mep_percentage_value($down_payment, $total_amount);
+        $due_amount = $total_amount - mep_percentage_value($down_payment, $total_amount);
+
+        foreach ($this_plan_schedule as $schedule) {
+            $date = mep_payment_plan_date($schedule["plan_schedule_date_after"], $schedule["plan_schedule_parcent_date_type"], $date);
+            $amount = mep_percentage_value($schedule["plan_schedule_parcent"], $total_amount);
+            $due_amount = $due_amount - $amount;
+            $payment_terms[] = array(
+                'id' => '',
+                'title' => 'Future Payment',
+                'type' => 'future_payment',
+                'date' => $date,
+                'total' => $amount,
+                'due' => $due_amount,
+            );
+        }
+    }
+
+    return array(
+        'deposit_amount' => $deposit_amount,
+        'payment_terms' => $payment_terms,
+    );
+}
+
 function mep_modal_html()
 {
     ?>
@@ -1562,123 +1724,212 @@ function mep_modal_html()
     <?php
 }
 
+/* Get the deposit amount
+ * @param int $product_id
+ * @param string $deposit_type
+ * @return $deposit_amount
+ * */
+if (!function_exists('mepp_get_deposit_amount')) {
+    function mepp_get_deposit_amount($product_id)
+    {
+        $deposit_amount = 0;
+
+        if (function_exists('mep_product_exists')) {
+            if (get_post_meta($product_id, 'link_mep_event', true)) {
+                $linked_event_id = get_post_meta($product_id, 'link_mep_event', true);
+            } else {
+                $linked_event_id = null;
+            }
+
+            if ($linked_event_id) {
+                $product_id = mep_product_exists($linked_event_id) ? $linked_event_id : $product_id;
+            }
+        }
+
+        $is_exclude_from_global = get_post_meta($product_id, '_mep_exclude_from_global_deposit', true);
+        $is_deposit_enable = get_post_meta($product_id, '_mep_enable_pp_deposit', true);
+
+        $default_deposit_type = get_option('mepp_default_partial_type') ? get_option('mepp_default_partial_type') : '';
+        $default_deposit_value = get_option('mepp_default_partial_amount') ? get_option('mepp_default_partial_amount') : '';
+
+        $is_global = false;
+        // Deposit value & deposit type
+        if ($is_exclude_from_global === 'yes' && $is_deposit_enable === 'yes') {
+            $deposit_value = get_post_meta($product_id, '_mep_pp_deposits_value', true) ? get_post_meta($product_id, '_mep_pp_deposits_value', true) : 0;
+            $minimum_value = get_post_meta($product_id, '_mep_pp_minimum_value', true) ? get_post_meta($product_id, '_mep_pp_minimum_value', true) : 0;
+            $deposit_type = get_post_meta($product_id, '_mep_pp_deposits_type', true) ? get_post_meta($product_id, '_mep_pp_deposits_type', true) : '';
+            if($deposit_type === 'minimum_amount') {
+                $deposit_value = $minimum_value;
+            }
+        } else {
+            $show_partial_page = get_option('mepp_partial_enable_for_page') ?: 'product_detail';
+            // if ($show_partial_page === 'checkout') return 0;
+            $deposit_value = $default_deposit_value;
+            $deposit_type = $default_deposit_type;
+            $is_global = true;
+        }
+
+        $product_type = get_post_type($product_id);
+        $product_price_total = 0;
+        $quantity = 1;
+
+        // Price
+        if ($product_type == 'mep_events') {
+//        $product_price_total = $cart_item_data['line_total'];
+        } else {
+            $product = wc_get_product($product_id);
+            $product_price_total = $product->get_price() * $quantity;
+            if ($product->is_type('variable')) {
+                return $deposit_amount;
+                // Product has variations
+                $variation_id = sanitize_text_field($_POST['variation_id']);
+                $product = new WC_Product_Variation($variation_id);
+                $product_price_total = $product->get_price() * $quantity;
+            }
+        }
+
+        if ($deposit_type == 'percent') {
+            $deposit_amount = ($deposit_value / 100) * $product_price_total;
+
+        } elseif ($deposit_type == 'minimum_amount') {
+            $deposit_amount = $is_global ? $deposit_value / $quantity : $minimum_value / $quantity;
+
+        } elseif ($deposit_type == 'payment_plan') {
+            $deposit_amount = 0;
+
+        } else {
+            $deposit_amount = $deposit_value / $quantity;
+
+        }
+
+        return $deposit_amount;
+    }
+}
+
+// Is there PayPal in payment method?
+function mepp_check_paypal_has()
+{
+    return in_array('ppcp-gateway', meppp_available_payment_methods());
+}
+
 if (!function_exists('mep_esc_html')) {
-    function mep_esc_html($string){
+    function mep_esc_html($string)
+    {
         $allow_attr = array(
             'input' => array(
-                'br'                    => [],
-                'type'                  => [],
-                'class'                 => [],
-                'id'                    => [],
-                'name'                  => [],
-                'value'                 => [],
-                'size'                  => [],
-                'placeholder'           => [],
-                'min'                   => [],
-                'max'                   => [],
-                'checked'               => [],
-                'required'              => [],
-                'disabled'              => [],
-                'readonly'              => [],
-                'step'                  => [],
-                'data-default-color'    => [],
+                'br' => [],
+                'type' => [],
+                'class' => [],
+                'id' => [],
+                'name' => [],
+                'value' => [],
+                'size' => [],
+                'placeholder' => [],
+                'min' => [],
+                'max' => [],
+                'checked' => [],
+                'required' => [],
+                'disabled' => [],
+                'readonly' => [],
+                'step' => [],
+                'data-default-color' => [],
             ),
             'p' => [
-                'class'     => []
+                'class' => []
             ],
             'img' => [
-                'class'     => [],
-                'id'        => [],
-                'src'       => [],
-                'alt'       => [],
+                'class' => [],
+                'id' => [],
+                'src' => [],
+                'alt' => [],
             ],
             'fieldset' => [
-                'class'     => []
+                'class' => []
             ],
             'label' => [
-                'for'       => [],
-                'class'     => []
+                'for' => [],
+                'class' => []
             ],
             'select' => [
-                'class'     => [],
-                'name'      => [],
-                'id'        => [],
+                'class' => [],
+                'name' => [],
+                'id' => [],
             ],
             'option' => [
-                'class'     => [],
-                'value'     => [],
-                'id'        => [],
-                'selected'  => [],
+                'class' => [],
+                'value' => [],
+                'id' => [],
+                'selected' => [],
             ],
             'textarea' => [
-                'class'     => [],
-                'rows'      => [],
-                'id'        => [],
-                'cols'      => [],
-                'name'      => [],
+                'class' => [],
+                'rows' => [],
+                'id' => [],
+                'cols' => [],
+                'name' => [],
             ],
-            'h2' => ['class'=> [],'id'=> [],],
-            'a' => ['class'=> [],'id'=> [],'href'=> [],],
-            'div' => ['class'=> [],'id'=> [],'data'=> [],],
+            'h2' => ['class' => [], 'id' => [],],
+            'a' => ['class' => [], 'id' => [], 'href' => [],],
+            'div' => ['class' => [], 'id' => [], 'data' => [],],
             'span' => [
-                'class'     => [],            
-                'id'        => [],
-                'data'      => [],
+                'class' => [],
+                'id' => [],
+                'data' => [],
             ],
             'i' => [
-                'class'     => [],            
-                'id'        => [],
-                'data'      => [],
+                'class' => [],
+                'id' => [],
+                'data' => [],
             ],
             'table' => [
-                'class'     => [],            
-                'id'        => [],
-                'data'      => [],
+                'class' => [],
+                'id' => [],
+                'data' => [],
             ],
             'tr' => [
-                'class'     => [],            
-                'id'        => [],
-                'data'      => [],
+                'class' => [],
+                'id' => [],
+                'data' => [],
             ],
             'td' => [
-                'class'     => [],            
-                'id'        => [],
-                'data'      => [],
+                'class' => [],
+                'id' => [],
+                'data' => [],
             ],
             'thead' => [
-                'class'     => [],            
-                'id'        => [],
-                'data'      => [],
+                'class' => [],
+                'id' => [],
+                'data' => [],
             ],
             'tbody' => [
-                'class'     => [],            
-                'id'        => [],
-                'data'      => [],
+                'class' => [],
+                'id' => [],
+                'data' => [],
             ],
             'th' => [
-                'class'     => [],            
-                'id'        => [],
-                'data'      => [],
+                'class' => [],
+                'id' => [],
+                'data' => [],
             ],
             'svg' => [
-                'class'     => [],            
-                'id'        => [],
-                'width'     => [],
-                'height'    => [],
-                'viewBox'   => [],
-                'xmlns'     => [],
+                'class' => [],
+                'id' => [],
+                'width' => [],
+                'height' => [],
+                'viewBox' => [],
+                'xmlns' => [],
             ],
             'g' => [
-                'fill'      => [],            
+                'fill' => [],
             ],
             'path' => [
-                'd'         => [],            
+                'd' => [],
             ],
-            'br'            => array(),
-            'em'            => array(),
-            'strong'        => array(),        
+            'br' => array(),
+            'em' => array(),
+            'strong' => array(),
         );
-        return wp_kses($string,$allow_attr);
+        return wp_kses($string, $allow_attr);
     }
-    }
+}
     

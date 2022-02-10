@@ -10,6 +10,7 @@ class MEP_PP_Checkout
     public function __construct()
     {
         add_action('woocommerce_review_order_after_order_total', [$this, 'to_pay_html']);
+        add_action('woocommerce_review_order_before_payment', [$this, 'deposit_type_selection']);
         add_action('woocommerce_checkout_create_order', [$this, 'adjust_order'], 10, 1);
         add_action('woocommerce_before_pay_action', [$this, 'before_pay_action'], 1, 1);
         add_action('woocommerce_before_thankyou', [$this, 'due_payment_order_data'], 10, 1);
@@ -20,7 +21,7 @@ class MEP_PP_Checkout
         add_filter('woocommerce_email_recipient_customer_completed_order', [$this, 'disable_email_for_sub_order'], 10, 2);
 
         // Zero price Checkout
-        $this->zero_price_checkout_allow = get_option('meppp_checkout_zero_price') ? get_option('meppp_checkout_zero_price') : 'no';
+        $this->zero_price_checkout_allow = apply_filters('mepp_enable_zero_price_checkout', 'no');
         if ($this->zero_price_checkout_allow === 'yes') {
             add_filter('woocommerce_cart_needs_payment', '__return_false');
             add_filter('woocommerce_order_needs_payment', '__return_false');
@@ -41,55 +42,81 @@ class MEP_PP_Checkout
         add_filter('woocommerce_checkout_create_order_line_item', [$this, 'save_cart_item_custom_meta_as_order_item_meta'], 20, 4);
         add_filter('woocommerce_payment_complete_order_status', array($this, 'prevent_status_to_processing'), 10, 2);
         add_action('wp_ajax_manually_pay_amount_input', array($this, 'manually_pay_amount_input'));
-        add_filter('woocommerce_available_payment_gateways', array($this, 'filter_payment_method'));
+        add_action('wp_ajax_nopriv_manually_pay_amount_input', array($this, 'manually_pay_amount_input'));
+
         do_action('dfwc_checkout', $this);
     }
 
-    public function filter_payment_method($payment_methods)
+    public function deposit_type_selection()
     {
-        if (is_checkout()) {
-            $has_deposit_in_cart = false;
-            foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) {
-                if (isset($cart_item['_pp_deposit_type'])) {
-                    if ($cart_item['_pp_deposit_type'] == 'check_pp_deposit') {
-                        $has_deposit_in_cart = true;
-                        break;
-                    }
-                }
-            }
+        $default_partial_for_page = apply_filters('mepp_partial_option_for_page', 'product_detail');
+        if ($default_partial_for_page === 'product_detail') {
+            return 0;
+        }
+        $default_deposit_type = get_option('mepp_default_partial_type') ? get_option('mepp_default_partial_type') : 'percent';
 
-            $allowed_payment_methods = mepp_get_option('meppp_payment_methods_allow');
-            if ($has_deposit_in_cart && $allowed_payment_methods) { // check by cart data
-                foreach ($payment_methods as $method) {
-                    if (!in_array($method->id, $allowed_payment_methods)) {
-                        unset($payment_methods[$method->id]);
-                    }
-                }
-            }
-
-            if (!$has_deposit_in_cart && $allowed_payment_methods) { // check by order id
-                global $wp;
-
-                if (isset($wp->query_vars['order-pay']) && absint($wp->query_vars['order-pay']) > 0) {
-                    $order_id = absint($wp->query_vars['order-pay']); // The order ID
-                    $order = wc_get_order($order_id); // Get the WC_Order Object instance
-                    $parent_order_id = $order->get_parent_id();
-                    if ($parent_order_id) {
-                        $p_order = wc_get_order($parent_order_id);
-                        $is_deposit_order = $p_order->get_meta('_pp_deposit_system');
-                        if ($is_deposit_order) {
-                            foreach ($payment_methods as $method) {
-                                if (!in_array($method->id, $allowed_payment_methods)) {
-                                    unset($payment_methods[$method->id]);
-                                }
-                            }
-                        }
-                    }
-                }
+        $default_payment_plans = get_option('mepp_default_payment_plan') ? maybe_unserialize(get_option('mepp_default_payment_plan')) : [];
+        $payment_plans = get_terms(
+            array(
+                'taxonomy' => 'mepp_payment_plan',
+                'hide_empty' => false
+            )
+        );
+        $all_plans = array();
+        if (!empty($payment_plans)) {
+            foreach ($payment_plans as $payment_plan) {
+                $all_plans[$payment_plan->term_id] = $payment_plan->name;
             }
         }
 
-        return $payment_methods;
+        $cart = WC()->cart->cart_contents;
+        $deposit_type = 'check_full';
+        $cart_payment_plan_id = '';
+        foreach ($cart as $item) {
+            if (isset($item['_pp_deposit_system'])) {
+                $deposit_type = $item['_pp_deposit_system'];
+                $cart_payment_plan_id = isset($item['_pp_deposit_payment_plan_id']) ? $item['_pp_deposit_payment_plan_id'] : '';
+                break;
+            }
+        }
+
+        $isForcePartialPayment = apply_filters('mepp_force_partial_payment', 'no');
+
+        ?>
+
+        <div class="wcpp-deposit-types">
+            <h5><?php _e('Deposit Type', 'advanced-partial-payment-or-deposit-for-woocommerce'); ?></h5>
+            <div class="inner">
+                <?php if ($isForcePartialPayment !== 'yes') : ?>
+                    <div class="wcpp-input-group">
+                        <input type="radio" name="_pp_deposit_system" value="check_full"
+                               id="check_full" <?php echo $deposit_type === '' || $deposit_type === 'check_full' ? "checked" : "" ?>>
+                        <label for="check_full"><?php _e('Full Payment', 'advanced-partial-payment-or-deposit-for-woocommerce'); ?></label>
+                    </div>
+                <?php endif; ?>
+                <div class="wcpp-input-group">
+                    <input type="radio" name="_pp_deposit_system" value="check_pp_deposit"
+                           data-deposit-type="<?php echo $default_deposit_type; ?>"
+                           id="check_pp_deposit" <?php echo $deposit_type !== 'check_full' && $deposit_type !== '' ? "checked" : "" ?>>
+                    <label for="check_pp_deposit"><?php _e('Pay Deposit', 'advanced-partial-payment-or-deposit-for-woocommerce'); ?></label>
+                </div>
+                <?php if ($default_deposit_type === 'payment_plan') : ?>
+                    <div class="mepp-payment-plan-option-frontend">
+                        <label for="mepp_default_payment_plan"><?php _e('Payment plan', 'advanced-partial-payment-or-deposit-for-woocommerce'); ?></label>
+                        <select name="mepp_default_payment_plan[]" id="mepp_default_payment_plan">
+                            <option value=""><?php _e('Select one', 'advanced-partial-payment-or-deposit-for-woocommerce'); ?></option>
+                            <?php if ($all_plans) : foreach ($all_plans as $id => $plan) : ?>
+                                <?php if (in_array($id, $default_payment_plans)) : ?>
+                                    <option value="<?php echo $id; ?>" <?php echo($id == $cart_payment_plan_id ? 'selected' : '') ?>><?php echo $plan; ?></option>
+                                <?php endif; ?>
+                            <?php endforeach; endif; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <?php
     }
 
     public function before_pay_action($order)
@@ -254,7 +281,7 @@ class MEP_PP_Checkout
             $cart_item['_pp_deposit'] = $cart_item['_pp_deposit'] * $cart_item['quantity'];
             $cart_item['_pp_due_payment'] = $cart_item['_pp_due_payment'] * $cart_item['quantity'];
             $order .= sprintf(
-                '<p>' . mepp_get_option('mepp_text_translation_string_deposit', __('Deposit:', 'advanced-partial-payment-or-deposit-for-woocommerce')) . ' %s <br> ' . mepp_get_option('mepp_text_translation_string_due_payment', __('Due Payment:', 'advanced-partial-payment-or-deposit-for-woocommerce')) . '  %s <br> ' . mepp_get_option('mepp_text_translation_string_deposit_type', __('Deposit Type:', 'advanced-partial-payment-or-deposit-for-woocommerce')) . '  %s</p>',
+                '<p>' . mepp_get_option('mepp_text_translation_string_deposit', __('Deposit', 'advanced-partial-payment-or-deposit-for-woocommerce')) . ': %s <br> ' . mepp_get_option('mepp_text_translation_string_due_payment', __('Due Payment', 'advanced-partial-payment-or-deposit-for-woocommerce')) . ':  %s <br> ' . mepp_get_option('mepp_text_translation_string_deposit_type', __('Deposit Type', 'advanced-partial-payment-or-deposit-for-woocommerce')) . ':  <strong>%s</strong></p>',
                 wc_price($cart_item['_pp_deposit']),
                 wc_price($cart_item['_pp_due_payment']),
                 mep_pp_deposti_type_display_name($cart_item['_pp_deposit_system'], $cart_item, true)
@@ -294,9 +321,13 @@ class MEP_PP_Checkout
         $cart_has_payment_plan = false; // Check cart has payment plan deposit system. init false
         $order_payment_plan = array();
         $pp_deposit_system = '';
+        $grand_total_price = 0;
         foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) {
+//            echo '<pre>';print_r($cart_item);die;
             $deposit_value += (isset($cart_item['_pp_deposit_type']) && $cart_item['_pp_deposit_type'] == 'check_pp_deposit') ? $cart_item['_pp_deposit'] * $cart_item['quantity'] : 0;
             $due_payment_value += (isset($cart_item['_pp_deposit_type']) && $cart_item['_pp_deposit_type'] == 'check_pp_deposit') ? $cart_item['_pp_due_payment'] * $cart_item['quantity'] : 0;
+
+            $grand_total_price += (isset($cart_item['_pp_deposit_type']) && $cart_item['_pp_deposit_type'] == 'check_pp_deposit') ? $cart_item['line_total'] * $cart_item['quantity'] : 0;
 
             if (isset($cart_item['_pp_deposit_system'])) {
                 if ($cart_item['_pp_deposit_system'] == 'payment_plan') {
@@ -322,24 +353,45 @@ class MEP_PP_Checkout
         // $new_total = $total - $due_payment_value; // <== deposit value calculation
         $new_total = isset($_POST['manually_due_amount']) ? ($total - sanitize_text_field($_POST['manually_due_amount'])) : ($total - $due_payment_value);
 
-        // for admin meta data
-        $order->update_meta_data('total_value', $total, true);
-        $order->update_meta_data('deposit_value', $new_total, true);
-        $order->update_meta_data('due_payment', $total - $new_total, true);
-        $order->update_meta_data('order_payment_plan', $order_payment_plan, true); // Payment Plans
-        // Set the new calculated total
-        $order->set_total(apply_filters('dfwc_cart_total', $new_total));
+        if (in_array('ppcp-gateway', meppp_available_payment_methods())) {
+            $deposit_amount = $total;
+            $due_amount = $grand_total_price - $deposit_amount;
 
-        $order->update_meta_data('deposit_mode', 'yes', true);
-        $order->update_meta_data('_pp_deposit_system', $pp_deposit_system, true);
-        if ($pp_deposit_system == 'zero_price_checkout') {
-            $order->update_meta_data('zero_price_checkout_allow', 'no', true);
+            // for admin meta data
+            $order->update_meta_data('total_value', $grand_total_price, true);
+            $order->update_meta_data('deposit_value', $deposit_amount, true);
+            $order->update_meta_data('due_payment', $due_amount, true);
+            $order->update_meta_data('order_payment_plan', $order_payment_plan, true); // Payment Plans
+            // Set the new calculated total
+            $order->set_total(apply_filters('dfwc_cart_total', $deposit_amount));
+
+            $order->update_meta_data('deposit_mode', 'yes', true);
+            $order->update_meta_data('_pp_deposit_system', $pp_deposit_system, true);
+            if ($pp_deposit_system == 'zero_price_checkout') {
+                $order->update_meta_data('zero_price_checkout_allow', 'no', true);
+            }
+
+            do_action('dfwc_adjust_order', $order, $grand_total_price);
+        } else {
+            // for admin meta data
+            $order->update_meta_data('total_value', $total, true);
+            $order->update_meta_data('deposit_value', $new_total, true);
+            $order->update_meta_data('due_payment', $total - $new_total, true);
+            $order->update_meta_data('order_payment_plan', $order_payment_plan, true); // Payment Plans
+            // Set the new calculated total
+            $order->set_total(apply_filters('dfwc_cart_total', $new_total));
+
+            $order->update_meta_data('deposit_mode', 'yes', true);
+            $order->update_meta_data('_pp_deposit_system', $pp_deposit_system, true);
+            if ($pp_deposit_system == 'zero_price_checkout') {
+                $order->update_meta_data('zero_price_checkout_allow', 'no', true);
+            }
+
+            do_action('dfwc_adjust_order', $order, $new_total);
+
+            $deposit_amount = $new_total;
+            $due_amount = $total - $new_total;
         }
-
-        do_action('dfwc_adjust_order', $order, $total);
-
-        $deposit_amount = $new_total;
-        $due_amount = $total - $new_total;
 
         // ********************************
         if ($due_amount) {
@@ -534,7 +586,7 @@ class MEP_PP_Checkout
     public function deposit_order_complete($order_id)
     {
         // Get an instance of the WC_Order object (same as before)
-        
+
 
         $order = wc_get_order($order_id);
 

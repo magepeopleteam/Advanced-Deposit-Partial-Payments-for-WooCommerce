@@ -8,6 +8,39 @@
 
         // $('.mep-view-reminder-log').trigger('click');
 
+        // Initail deposit type check in setting
+        const default_deposit_type = $('select[name="mepp_default_partial_type"] option:selected').val();
+        if(default_deposit_type === 'payment_plan') {
+            $('.mepp-payment-plan-sett').show();
+            $('.mepp-payment-deposit-value').hide();
+        } else {
+            $('.mepp-payment-plan-sett').hide();
+            $('.mepp-payment-deposit-value').show();
+        }
+
+        // Change deposit type in setting
+        $('select[name="mepp_default_partial_type"]').change(function() {
+            const selected_val = $("option:selected", this).val();
+            if(selected_val === 'payment_plan') {
+                $('.mepp-payment-plan-sett').show();
+                $('.mepp-payment-deposit-value').hide();
+            } else {
+                $('.mepp-payment-plan-sett').hide();
+                $('.mepp-payment-deposit-value').show();
+            }
+        })
+
+        // mepp TAB
+        $('.mepp-tab-a').click(function (e) {
+            e.preventDefault();
+            $('.mepp-tab-a').removeClass('active-a')
+            $(this).addClass('active-a')
+
+            $(".mepp-tab").removeClass('mepp-tab-active');
+            $(".mepp-tab[data-id='" + $(this).attr('data-id') + "']").addClass("mepp-tab-active");
+            $(this).parent().find(".tab-a").addClass('active-a');
+        });
+
     });
     $(document).on('change', 'div.tab-content #_mep_pp_deposits_type[name="_mep_pp_deposits_type"] ', function (e) {
         e.preventDefault();
@@ -370,6 +403,10 @@
             }
         })
     }
+
+    function myFunction() {
+        alert("The context menu is about to be shown");
+      }
 
 })(jQuery);
 

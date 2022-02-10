@@ -10,9 +10,10 @@ class WC_Settings_Tab_Mage_Partial_Basic
      */
     public static function init()
     {
-        add_filter('woocommerce_settings_tabs_array', __CLASS__ . '::add_settings_tab', 50);
+        add_filter('mepp-partial-setting-tab', __CLASS__ . '::add_settings_tab', 50);
         add_action('woocommerce_settings_tabs_settings_tab_mage_partial', __CLASS__ . '::settings_tab');
         add_action('woocommerce_update_options_settings_tab_mage_partial', __CLASS__ . '::update_settings');
+
     }
 
     /**
